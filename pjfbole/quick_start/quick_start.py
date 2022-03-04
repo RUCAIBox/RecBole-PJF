@@ -8,15 +8,12 @@ pjfbole.quick_start
 """
 import logging
 from logging import getLogger
-
-# import torch
-import pickle
+from recbole.utils import init_logger, init_seed, get_trainer, set_color
 
 from pjfbole.config import PJFConfig
-from recbole.utils import init_logger, init_seed
 from pjfbole.data import create_dataset, data_preparation
+from pjfbole.utils import get_model
 
-# from recbole.data import create_dataset, data_preparation, save_split_dataloaders, load_split_dataloaders
 # from recbole.utils import init_logger, get_trainer, get_model, init_seed, set_color
 
 
@@ -34,7 +31,6 @@ def run_pjfbole(model=None, dataset=None, config_file_list=None, config_dict=Non
     dataset = create_dataset(config)
     logger.info(dataset)
 
-    return 0
     # dataset splitting
     train_data, valid_data, test_data = data_preparation(config, dataset)
 

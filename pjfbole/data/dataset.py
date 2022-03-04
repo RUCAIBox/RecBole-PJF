@@ -3,15 +3,15 @@
 # @Email  : flust@ruc.edu.cn
 
 """
-recbole.data.decisiontree_dataset
+recbole.data.pjf_dataset
 ##########################
 """
 
 
 from recbole.data.dataset import Dataset
 
+
 class PJFDataset(Dataset):
     def __init__(self, config):
         super().__init__(config)
-
 

@@ -1,1 +1,2 @@
 multi_direction: False
+embedding_size: 64

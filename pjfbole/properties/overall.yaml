@@ -11,9 +11,11 @@ save_dataset: False
 dataset_save_path: ~
 save_dataloaders: False
 dataloaders_save_path: ~
+log_wandb: False
+wandb_project: 'recbole'
 
 # training settings
-epochs: 300
+epochs: 3
 train_batch_size: 2048
 learner: adam
 learning_rate: 0.001
