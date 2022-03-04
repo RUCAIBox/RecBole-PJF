@@ -21,8 +21,6 @@ from pjfbole.data import create_dataset, data_preparation
 
 
 def run_pjfbole(model=None, dataset=None, config_file_list=None, config_dict=None, saved=True):
-
-    
     # configurations initialization
     config = PJFConfig(model=model, dataset=dataset, config_file_list=config_file_list, config_dict=config_dict)
     init_seed(config['seed'], config['reproducibility'])
