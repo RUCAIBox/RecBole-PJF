@@ -1,3 +1,6 @@
+.idea/
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -5,6 +8,7 @@ __pycache__/
 
 # C extensions
 *.so
+*.pyc
 
 # Distribution / packaging
 log/
@@ -55,6 +59,7 @@ coverage.xml
 # Translations
 *.mo
 *.pot
+.DS_Store
 
 # Django stuff:
 *.log
