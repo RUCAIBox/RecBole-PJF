@@ -7,6 +7,7 @@ from recbole.config import Config
 from pjfbole.utils import get_model
 import os
 
+
 class PJFConfig(Config):
     def __init__(self, model=None, dataset=None, config_file_list=None, config_dict=None):
         super(PJFConfig, self).__init__(model, dataset, config_file_list, config_dict)

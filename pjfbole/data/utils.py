@@ -6,10 +6,12 @@ import importlib
 import os
 import pickle
 
-from recbole.data.dataloader import *
+from pjfbole.data.dataloader import *
+from recbole.sampler import KGSampler, Sampler, RepeatableSampler
 from recbole.data import save_split_dataloaders, load_split_dataloaders, create_samplers
 from recbole.utils.argument_list import dataset_arguments
 from recbole.utils import set_color
+from recbole.data.utils import get_dataloader
 
 
 def create_dataset(config):
@@ -40,7 +42,7 @@ def create_dataset(config):
     return dataset
 
 
-def data_preparation(config, dataset):
+def data_preparation_for_multi_direction(config, dataset):
     """Split the dataset by :attr:`config['eval_args']` and create training, validation and test dataloader.
 
     Note:
@@ -56,20 +58,17 @@ def data_preparation(config, dataset):
             - valid_data (AbstractDataLoader): The dataloader for validation.
             - test_data (AbstractDataLoader): The dataloader for testing.
     """
-    dataloaders = load_split_dataloaders(config)
-    if dataloaders is not None:
-        train_data, valid_data, test_data = dataloaders
-    else:
-        built_datasets = dataset.build()
+    built_datasets = dataset.build()
 
-        train_dataset, valid_dataset, test_dataset = built_datasets
-        train_sampler, valid_sampler, test_sampler = create_samplers(config, dataset, built_datasets)
+    train_dataset, valid_g_dataset, valid_j_dataset, test_g_dataset, test_j_dataset = built_datasets
+    train_sampler, valid_g_sampler, valid_j_sampler, test_g_sampler, test_j_sampler \
+        = create_samplers_for_multi_direction(config, dataset, built_datasets)
 
-        train_data = get_dataloader(config, 'train')(config, train_dataset, train_sampler, shuffle=True)
-        valid_data = get_dataloader(config, 'evaluation')(config, valid_dataset, valid_sampler, shuffle=False)
-        test_data = get_dataloader(config, 'evaluation')(config, test_dataset, test_sampler, shuffle=False)
-        if config['save_dataloaders']:
-            save_split_dataloaders(config, dataloaders=(train_data, valid_data, test_data))
+    train_data = get_dataloader(config, 'train')(config, train_dataset, train_sampler, shuffle=True)
+    valid_g_data = get_dataloader(config, 'evaluation')(config, valid_g_dataset, valid_g_sampler, shuffle=False)
+    valid_j_data = get_dataloader(config, 'evaluation')(config, valid_j_dataset, valid_j_sampler, shuffle=False)
+    test_g_data = get_dataloader(config, 'evaluation')(config, test_g_dataset, test_g_sampler, shuffle=False)
+    test_j_data = get_dataloader(config, 'evaluation')(config, test_j_dataset, test_j_sampler, shuffle=False)
 
     logger = getLogger()
     logger.info(
@@ -82,24 +81,69 @@ def data_preparation(config, dataset):
         set_color(f'[{config["eval_batch_size"]}]', 'yellow') + set_color(' eval_args', 'cyan') + ': ' +
         set_color(f'[{config["eval_args"]}]', 'yellow')
     )
-    return train_data, valid_data, test_data
+    return train_data, valid_g_data, valid_j_data, test_g_data, test_j_data
 
 
-def get_dataloader(config, phase):
-    """Return a dataloader class according to :attr:`config` and :attr:`phase`.
+# def get_dataloader(config, phase):
+#     if phase == 'train':
+#         return DualTrainDataloader
+#     else:
+#         eval_strategy = config['eval_neg_sample_args']['strategy']
+#         if eval_strategy in {'none', 'by'}:
+#             return DualNegDataloader
+#         elif eval_strategy == 'full':
+#             return DualNegDataloader
+
+
+def create_samplers_for_multi_direction(config, dataset, built_datasets):
+    """Create sampler for training, validation and testing.
 
     Args:
         config (Config): An instance object of Config, used to record parameter information.
-        phase (str): The stage of dataloader. It can only take two values: 'train' or 'evaluation'.
+        dataset (Dataset): An instance object of Dataset, which contains all interaction records.
+        built_datasets (list of Dataset): A list of split Dataset, which contains dataset for
+            training, validation and testing.
 
     Returns:
-        type: The dataloader class that meets the requirements in :attr:`config` and :attr:`phase`.
+        tuple:
+            - train_sampler (AbstractSampler): The sampler for training.
+            - valid_sampler (AbstractSampler): The sampler for validation.
+            - test_sampler (AbstractSampler): The sampler for testing.
     """
-    if phase == 'train':
-        return TrainDataLoader
-    else:
-        eval_strategy = config['eval_neg_sample_args']['strategy']
-        if eval_strategy in {'none', 'by'}:
-            return NegSampleEvalDataLoader
-        elif eval_strategy == 'full':
-            return FullSortEvalDataLoader
+    phases = ['train', 'valid_g', 'valid_j', 'test_g', 'test_j']
+    train_neg_sample_args = config['train_neg_sample_args']
+    eval_neg_sample_args = config['eval_neg_sample_args']
+    g_sampler, j_sampler = None, None
+    valid_g_sampler, valid_j_sampler, test_g_sampler, test_j_sampler = None, None, None, None
+
+    if train_neg_sample_args['strategy'] != 'none':
+        if not config['repeatable']:
+            sampler = Sampler(phases, built_datasets, train_neg_sample_args['distribution'])
+        else:
+            sampler = RepeatableSampler(phases, dataset, train_neg_sample_args['distribution'])
+        train_sampler = sampler.set_phase('train')
+
+    if eval_neg_sample_args['strategy'] != 'none':
+        if g_sampler is None or j_sampler is None:
+            if not config['repeatable']:
+                g_sampler = Sampler(phases, built_datasets, eval_neg_sample_args['distribution'])
+                built_datasets[0].uid_field, built_datasets[0].iid_field \
+                    = built_datasets[0].iid_field, built_datasets[0].uid_field
+                j_sampler = Sampler(phases, built_datasets, eval_neg_sample_args['distribution'])
+            else:
+                g_sampler = RepeatableSampler(phases, dataset, eval_neg_sample_args['distribution'])
+                j_sampler = RepeatableSampler(phases, dataset, eval_neg_sample_args['distribution'])
+        else:
+            g_sampler.set_distribution(eval_neg_sample_args['distribution'])
+            built_datasets[0].uid_field, built_datasets[0].iid_field \
+                = built_datasets[0].iid_field, built_datasets[0].uid_field
+            j_sampler.set_distribution(eval_neg_sample_args['distribution'])
+        valid_g_sampler = g_sampler.set_phase('valid_g')
+        valid_j_sampler = j_sampler.set_phase('valid_j')
+        test_g_sampler = g_sampler.set_phase('test_g')
+        test_j_sampler = j_sampler.set_phase('test_j')
+
+        built_datasets[0].uid_field, built_datasets[0].iid_field \
+            = built_datasets[0].iid_field, built_datasets[0].uid_field
+
+    return train_sampler, valid_g_sampler, valid_j_sampler, test_g_sampler, test_j_sampler

@@ -7,6 +7,7 @@ USER_ID_FIELD: user_id
 ITEM_ID_FIELD: item_id
 RATING_FIELD: rating
 TIME_FIELD: timestamp
+DIRECT_FIELD: direct
 seq_len: ~
 # Label for Point-wise DataLoader
 LABEL_FIELD: label
@@ -43,3 +44,5 @@ alias_of_entity_id: ~
 alias_of_relation_id: ~
 preload_weight: ~
 normalize_field: ~
+
+multi_direction: True

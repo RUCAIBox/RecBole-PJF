@@ -34,7 +34,7 @@ eval_args:
   split: {'RS':[0.8,0.1,0.1]}
   group_by: user
   order: RO
-  mode: full
+  mode: uni20
 repeatable: False
 metrics: ["Recall","MRR","NDCG","Hit","Precision"]
 topk: [10]
