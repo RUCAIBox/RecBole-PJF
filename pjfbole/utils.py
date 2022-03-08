@@ -21,3 +21,13 @@ def get_model(model_name):
         raise ValueError('`model_name` [{}] is not the name of an existing model.'.format(model_name))
     model_class = getattr(model_module, model_name)
     return model_class
+
+
+def get_trainer(model_type, model_name, multi_direction=False):
+    try:
+        return getattr(importlib.import_module('pjfbole.trainer'), model_name + 'Trainer')
+    except AttributeError:
+        if multi_direction:
+            return getattr(importlib.import_module('pjfbole.trainer'), 'MultiDirectTrainer')
+        else:
+            return getattr(importlib.import_module('recbole.trainer'), 'Trainer')

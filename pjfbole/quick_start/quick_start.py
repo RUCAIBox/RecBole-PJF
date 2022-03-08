@@ -8,13 +8,13 @@ pjfbole.quick_start
 """
 import logging
 from logging import getLogger
-from recbole.utils import init_logger, init_seed, get_trainer, set_color
+from recbole.utils import init_logger, init_seed, set_color
 from recbole.data import data_preparation
 # from recbole.trainer import trainer
 
 from pjfbole.config import PJFConfig
 from pjfbole.data import create_dataset, data_preparation_for_multi_direction
-from pjfbole.utils import get_model
+from pjfbole.utils import get_model, get_trainer
 
 # from recbole.utils import get_trainer
 import recbole.trainer
@@ -48,7 +48,7 @@ def run_pjfbole(model=None, dataset=None, config_file_list=None, config_dict=Non
     logger.info(model)
 
     # trainer loading and initialization
-    trainer = get_trainer(config['MODEL_TYPE'], config['model'])(config, model)
+    trainer = get_trainer(config['MODEL_TYPE'], config['model'],multi_direction=config['multi_direction'])(config, model)
 
     if config['multi_direction']:
         # model training
@@ -62,7 +62,11 @@ def run_pjfbole(model=None, dataset=None, config_file_list=None, config_dict=Non
         test_result_g = trainer.evaluate(test_g_data, load_best_model=saved, show_progress=config['show_progress'])
         logger.info(set_color('test result for geek', 'yellow') + f': {test_result_g}')
 
+        trainer.config['ITEM_ID_FIELD'], trainer.config['USER_ID_FIELD'] \
+            = trainer.config['USER_ID_FIELD'], trainer.config['ITEM_ID_FIELD']
         test_result_j = trainer.evaluate(test_j_data, load_best_model=saved, show_progress=config['show_progress'])
+        trainer.config['ITEM_ID_FIELD'], trainer.config['USER_ID_FIELD'] \
+            = trainer.config['USER_ID_FIELD'], trainer.config['ITEM_ID_FIELD']
         logger.info(set_color('test result for job', 'yellow') + f': {test_result_j}')
         return {
             'best_valid_score': best_valid_score,

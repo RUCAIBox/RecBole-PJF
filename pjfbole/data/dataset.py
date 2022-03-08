@@ -12,6 +12,7 @@ import numpy as np
 from recbole.data.dataset import Dataset
 from recbole.utils import set_color
 
+
 class PJFDataset(Dataset):
     def __init__(self, config):
         super().__init__(config)
