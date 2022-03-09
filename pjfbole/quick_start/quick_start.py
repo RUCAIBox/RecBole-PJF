@@ -1,4 +1,4 @@
-# @Time   : 2022/03/02
+# @Time   : 2022/3/2
 # @Author : Chen Yang
 # @Email  : flust@ruc.edu.cn
 
@@ -8,17 +8,13 @@ pjfbole.quick_start
 """
 import logging
 from logging import getLogger
+
 from recbole.utils import init_logger, init_seed, set_color
 from recbole.data import data_preparation
-# from recbole.trainer import trainer
 
 from pjfbole.config import PJFConfig
 from pjfbole.data import create_dataset, data_preparation_for_multi_direction
 from pjfbole.utils import get_model, get_trainer
-
-# from recbole.utils import get_trainer
-import recbole.trainer
-# from recbole.utils import init_logger, get_trainer, get_model, init_seed, set_color
 
 
 def run_pjfbole(model=None, dataset=None, config_file_list=None, config_dict=None, saved=True):

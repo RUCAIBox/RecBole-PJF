@@ -2,22 +2,42 @@
 # @Author : Chen Yang
 # @Email  : flust@ruc.edu.cn
 
+"""
+pjfbole.data.utils
+########################
+"""
+
 import importlib
 import os
 import pickle
 
-from pjfbole.data.dataloader import *
-from recbole.sampler import KGSampler, Sampler, RepeatableSampler
+from recbole.sampler import Sampler, RepeatableSampler
 from recbole.data import save_split_dataloaders, load_split_dataloaders, create_samplers
 from recbole.utils.argument_list import dataset_arguments
 from recbole.utils import set_color
 from recbole.data.utils import get_dataloader
 
+from pjfbole.data.dataloader import *
+
 
 def create_dataset(config):
+    """Create dataset according to :attr:`config['model']`.
+    If :attr:`config['dataset_save_path']` file exists and
+    its :attr:`config` of dataset is equal to current :attr:`config` of dataset.
+    It will return the saved dataset in :attr:`config['dataset_save_path']`.
+
+    Args:
+        config (Config): An instance object of Config, used to record parameter information.
+
+    Returns:
+        Dataset: Constructed dataset.
+    """
     dataset_module = importlib.import_module('pjfbole.data.dataset')
+    recbole_dataset_module = importlib.import_module('recbole.data.dataset')
     if hasattr(dataset_module, config['model'] + 'Dataset'):
         dataset_class = getattr(dataset_module, config['model'] + 'Dataset')
+    elif hasattr(recbole_dataset_module, config['model'] + 'Dataset'):
+        dataset_class = getattr(recbole_dataset_module, config['model'] + 'Dataset')
     else:
         dataset_class = getattr(dataset_module, 'PJFDataset')
 

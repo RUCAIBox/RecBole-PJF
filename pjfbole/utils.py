@@ -1,4 +1,4 @@
-# @Time   : 2022/03/02
+# @Time   : 2022/3/2
 # @Author : Chen Yang
 # @Email  : flust@ruc.edu.cn
 
@@ -8,6 +8,7 @@ pjfbole.utils
 """
 
 import importlib
+from recbole.utils import get_model as get_recbole_model
 
 
 def get_model(model_name):
@@ -18,7 +19,7 @@ def get_model(model_name):
         model_module = importlib.import_module(module_path, __name__)
 
     if model_module is None:
-        raise ValueError('`model_name` [{}] is not the name of an existing model.'.format(model_name))
+        return get_recbole_model(model_name)
     model_class = getattr(model_module, model_name)
     return model_class
 
