@@ -2,6 +2,11 @@
 # @Author : Chen Yang
 # @Email  : flust@ruc.edu.cn
 
+"""
+pjfbole.trainer
+########################
+"""
+
 from collections import OrderedDict
 
 import torch

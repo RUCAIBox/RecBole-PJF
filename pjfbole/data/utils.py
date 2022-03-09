@@ -10,6 +10,7 @@ pjfbole.data.utils
 import importlib
 import os
 import pickle
+from logging import getLogger
 
 from recbole.sampler import Sampler, RepeatableSampler
 from recbole.utils.argument_list import dataset_arguments

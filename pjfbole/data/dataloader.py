@@ -2,14 +2,14 @@
 # @Author : Chen Yang
 # @Email  : flust@ruc.edu.cn
 
-import math
-import copy
-from logging import getLogger
+"""
+pjfbole.data.dataloader
+########################
+"""
 
 import torch
 
 from recbole.data.dataloader.general_dataloader import TrainDataLoader, NegSampleEvalDataLoader
-from recbole.data.interaction import Interaction
 
 
 class DualTrainDataloader(TrainDataLoader):
