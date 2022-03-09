@@ -2,13 +2,19 @@
 # @Author : Chen Yang
 # @Email  : flust@ruc.edu.cn
 
+"""
+pjfbole.config
+##########################
+"""
 
-from recbole.config import Config
-from pjfbole.utils import get_model
 import os
+from recbole.config import Config
+
+from pjfbole.utils import get_model
 
 
 class PJFConfig(Config):
+
     def __init__(self, model=None, dataset=None, config_file_list=None, config_dict=None):
         super(PJFConfig, self).__init__(model, dataset, config_file_list, config_dict)
 
@@ -57,3 +63,7 @@ class PJFConfig(Config):
             final_dataset = dataset
 
         return final_model, final_model_class, final_dataset
+
+    def change_direction(self):
+        self.final_config_dict['USER_ID_FIELD'], self.final_config_dict['ITEM_ID_FIELD'] = \
+            self.final_config_dict['ITEM_ID_FIELD'], self.final_config_dict['USER_ID_FIELD']

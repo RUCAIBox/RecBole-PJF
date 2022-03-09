@@ -3,7 +3,7 @@
 # @Email  : flust@ruc.edu.cn
 
 """
-recbole.data.pjf_dataset
+pjfbole.data.pjf_dataset
 ##########################
 """
 
@@ -14,10 +14,37 @@ from recbole.utils import set_color
 
 
 class PJFDataset(Dataset):
+    """ Configurator module that load the defined parameters.
+
+    Configurator module will first load the default parameters from the fixed properties in RecBole and then
+    load parameters from the external input.
+
+    External input supports three kind of forms: config file, command line and parameter dictionaries.
+
+    - config file: It's a file that record the parameters to be modified or added. It should be in ``yaml`` format,
+      e.g. a config file is 'example.yaml', the content is:
+
+        learning_rate: 0.001
+
+        train_batch_size: 2048
+
+    - command line: It should be in the format as '---learning_rate=0.001'
+
+    - parameter dictionaries: It should be a dict, where the key is parameter name and the value is parameter value,
+      e.g. config_dict = {'learning_rate': 0.001}
+
+    Configuration module allows the above three kind of external input format to be used together,
+    the priority order is as following:
+
+    command line > parameter dictionaries > config file
+
+    e.g. If we set learning_rate=0.01 in config file, learning_rate=0.02 in command line,
+    learning_rate=0.03 in parameter dictionaries.
+
+    Finally the learning_rate is equal to 0.02.
+    """
     def __init__(self, config):
         super().__init__(config)
-        self.direct = 0
-        # self._set_dual_side_data()
 
     def _remap_ID_all(self):
         """Remap all token-like fields.
@@ -29,6 +56,11 @@ class PJFDataset(Dataset):
         for field in self._rest_fields:
             remap_list = self._get_remap_list(np.array([field]))
             self._remap(remap_list)
+
+    def change_direction(self):
+        """Change direction for Validation and testing.
+        """
+        self.uid_field, self.iid_field = self.iid_field, self.uid_field
 
     def build(self):
         """Processing dataset according to evaluation setting, including Group, Order and Split.
@@ -82,44 +114,12 @@ class PJFDataset(Dataset):
             valid_g = self.copy(datasets[1].inter_feat[datasets[1].inter_feat[d] == geek_direct])
 
             valid_j = self.copy(datasets[1].inter_feat[datasets[1].inter_feat[d] != geek_direct])
-            valid_j.uid_field, valid_j.iid_field = valid_j.iid_field, valid_j.uid_field
+            valid_j.change_direction()
 
             test_g = self.copy(datasets[2].inter_feat[datasets[2].inter_feat[d] == geek_direct])
 
             test_j = self.copy(datasets[2].inter_feat[datasets[2].inter_feat[d] != geek_direct])
-            test_j.uid_field, test_j.iid_field = test_j.iid_field, test_j.uid_field
+            test_j.change_direction()
             return [datasets[0], valid_g, valid_j, test_g, test_j]
         return datasets
 
-
-    # def _get_field_from_config(self):
-    #     """Initialization common field names.
-    #     """
-    #     self.uid_field = self.config['USER_ID_FIELD']
-    #     self.iid_field = self.config['ITEM_ID_FIELD']
-    #     self.label_field = self.config['LABEL_FIELD']
-    #     self.time_field = self.config['TIME_FIELD']
-    #     # self.direct_field = self.config['DIRECT_FIELD']
-    #
-    #     if (self.uid_field is None) ^ (self.iid_field is None):
-    #         raise ValueError(
-    #             'USER_ID_FIELD and ITEM_ID_FIELD need to be set at the same time or not set at the same time.'
-    #         )
-    #
-    #     self.logger.debug(set_color('uid_field', 'blue') + f': {self.uid_field}')
-    #     self.logger.debug(set_color('iid_field', 'blue') + f': {self.iid_field}')
-
-    # def _set_dual_side_data(self):
-    #     if self.config['multi_direction']:
-    #         self.geek_inter = self.inter_feat[self.inter_feat['direct'] == '0']
-    #         self.job_inter = self.inter_feat[self.inter_feat['direct'] == '1']
-    #
-    # def set_direction(self, direct):
-    #     self.direct = direct
-    #
-    # def __getitem__(self, index, join=True):
-    #     if self.direct == 0:
-    #         df = self.geek_inter[index]
-    #     else:
-    #         df = self.job_inter[index]
-    #     return self.join(df) if join else df

@@ -12,10 +12,10 @@ import os
 import pickle
 
 from recbole.sampler import Sampler, RepeatableSampler
-from recbole.data import save_split_dataloaders, load_split_dataloaders, create_samplers
 from recbole.utils.argument_list import dataset_arguments
 from recbole.utils import set_color
 from recbole.data.utils import get_dataloader
+from recbole.data.utils import data_preparation as recbole_data_preparation
 
 from pjfbole.data.dataloader import *
 
@@ -62,11 +62,10 @@ def create_dataset(config):
     return dataset
 
 
-def data_preparation_for_multi_direction(config, dataset):
+def data_preparation(config, dataset):
     """Split the dataset by :attr:`config['eval_args']` and create training, validation and test dataloader.
-
-    Note:
-        If we can load split dataloaders by :meth:`load_split_dataloaders`, we will not create new split dataloaders.
+    If the :attr:`config['multi_direction']` is set, the dataset is divided into
+    train, valid for geek, valid for job, test for geek and test for job.
 
     Args:
         config (Config): An instance object of Config, used to record parameter information.
@@ -75,9 +74,12 @@ def data_preparation_for_multi_direction(config, dataset):
     Returns:
         tuple:
             - train_data (AbstractDataLoader): The dataloader for training.
-            - valid_data (AbstractDataLoader): The dataloader for validation.
-            - test_data (AbstractDataLoader): The dataloader for testing.
+            - (valid_g_data, valid_j_data) (tuple of AbstractDataLoader): The dataloader for validation for geek and job.
+            - (test_g_data, test_j_data) (tuple of AbstractDataLoader): The dataloader for testing for geek and job.
     """
+    if not config['multi_direction']:
+        return recbole_data_preparation(config, dataset)
+
     built_datasets = dataset.build()
 
     train_dataset, valid_g_dataset, valid_j_dataset, test_g_dataset, test_j_dataset = built_datasets
@@ -101,34 +103,25 @@ def data_preparation_for_multi_direction(config, dataset):
         set_color(f'[{config["eval_batch_size"]}]', 'yellow') + set_color(' eval_args', 'cyan') + ': ' +
         set_color(f'[{config["eval_args"]}]', 'yellow')
     )
-    return train_data, valid_g_data, valid_j_data, test_g_data, test_j_data
-
-
-# def get_dataloader(config, phase):
-#     if phase == 'train':
-#         return DualTrainDataloader
-#     else:
-#         eval_strategy = config['eval_neg_sample_args']['strategy']
-#         if eval_strategy in {'none', 'by'}:
-#             return DualNegDataloader
-#         elif eval_strategy == 'full':
-#             return DualNegDataloader
+    return train_data, (valid_g_data, valid_j_data), (test_g_data, test_j_data)
 
 
 def create_samplers_for_multi_direction(config, dataset, built_datasets):
-    """Create sampler for training, validation and testing.
+    """Create sampler for training, validation for geek and job, and testing for geek and job.
 
     Args:
         config (Config): An instance object of Config, used to record parameter information.
         dataset (Dataset): An instance object of Dataset, which contains all interaction records.
         built_datasets (list of Dataset): A list of split Dataset, which contains dataset for
-            training, validation and testing.
+            training, validation for geek and job, and testing for geek and job.
 
     Returns:
         tuple:
             - train_sampler (AbstractSampler): The sampler for training.
-            - valid_sampler (AbstractSampler): The sampler for validation.
-            - test_sampler (AbstractSampler): The sampler for testing.
+            - valid_g_sampler (AbstractSampler): The sampler for validation for geek.
+            - valid_j_sampler (AbstractSampler): The sampler for validation for job.
+            - test_g_sampler (AbstractSampler): The sampler for testing for geek.
+            - test_j_sampler (AbstractSampler): The sampler for testing for job.
     """
     phases = ['train', 'valid_g', 'valid_j', 'test_g', 'test_j']
     train_neg_sample_args = config['train_neg_sample_args']
@@ -147,23 +140,21 @@ def create_samplers_for_multi_direction(config, dataset, built_datasets):
         if g_sampler is None or j_sampler is None:
             if not config['repeatable']:
                 g_sampler = Sampler(phases, built_datasets, eval_neg_sample_args['distribution'])
-                built_datasets[0].uid_field, built_datasets[0].iid_field \
-                    = built_datasets[0].iid_field, built_datasets[0].uid_field
+                built_datasets[0].change_direction()
                 j_sampler = Sampler(phases, built_datasets, eval_neg_sample_args['distribution'])
             else:
                 g_sampler = RepeatableSampler(phases, dataset, eval_neg_sample_args['distribution'])
+                built_datasets[0].change_direction()
                 j_sampler = RepeatableSampler(phases, dataset, eval_neg_sample_args['distribution'])
         else:
             g_sampler.set_distribution(eval_neg_sample_args['distribution'])
-            built_datasets[0].uid_field, built_datasets[0].iid_field \
-                = built_datasets[0].iid_field, built_datasets[0].uid_field
+            built_datasets[0].change_direction()
             j_sampler.set_distribution(eval_neg_sample_args['distribution'])
         valid_g_sampler = g_sampler.set_phase('valid_g')
         valid_j_sampler = j_sampler.set_phase('valid_j')
         test_g_sampler = g_sampler.set_phase('test_g')
         test_j_sampler = j_sampler.set_phase('test_j')
 
-        built_datasets[0].uid_field, built_datasets[0].iid_field \
-            = built_datasets[0].iid_field, built_datasets[0].uid_field
+        built_datasets[0].change_direction()
 
     return train_sampler, valid_g_sampler, valid_j_sampler, test_g_sampler, test_j_sampler
