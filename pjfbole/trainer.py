@@ -2,18 +2,11 @@
 # @Author : Chen Yang
 # @Email  : flust@ruc.edu.cn
 
-import os
-from logging import getLogger
-from time import time
 from collections import OrderedDict
 
-import numpy as np
 import torch
-import torch.optim as optim
-from torch.nn.utils.clip_grad import clip_grad_norm_
-from tqdm import tqdm
 from recbole.trainer import Trainer
-from recbole.utils import set_color, dict2str, early_stopping, calculate_valid_score
+from recbole.utils import calculate_valid_score
 
 
 class MultiDirectTrainer(Trainer):
