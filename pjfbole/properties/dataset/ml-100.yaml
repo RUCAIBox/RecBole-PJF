@@ -27,8 +27,12 @@ ENTITY_ID_FIELD: entity_id
 # Selectively Loading
 load_col:
     inter: [user_id, item_id, rating, timestamp, direct]
+    item: [item_id, class]
+    usents: [user_id, geek_sents]
+    isents: [item_id, job_sents]
 unload_col: ~
 unused_col: ~
+#additional_feat_suffix: [geeksents]
 
 # Filtering
 rm_dup_inter: ~

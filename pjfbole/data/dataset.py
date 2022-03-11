@@ -7,60 +7,81 @@ pjfbole.data.pjf_dataset
 ##########################
 """
 
+import os
 import numpy as np
 
 from recbole.data.dataset import Dataset
-from recbole.utils import set_color
+from recbole.utils import set_color, FeatureSource
+# from pjfbole.enum_type import FeatureSource
 
 
 class PJFDataset(Dataset):
-    """ Configurator module that load the defined parameters.
+    """:class:`Dataset` stores the original dataset in memory.
+    It provides many useful functions for data preprocessing, such as k-core data filtering and missing value
+    imputation. Features are stored as :class:`pandas.DataFrame` inside :class:`~recbole.data.dataset.dataset.Dataset`.
+    General and Context-aware Models can use this class.
 
-    Configurator module will first load the default parameters from the fixed properties in RecBole and then
-    load parameters from the external input.
+    By calling method :meth:`~recbole.data.dataset.dataset.Dataset.build`, it will processing dataset into
+    DataLoaders, according to :class:`~recbole.config.eval_setting.EvalSetting`.
 
-    External input supports three kind of forms: config file, command line and parameter dictionaries.
+    Args:
+        config (Config): Global configuration object.
 
-    - config file: It's a file that record the parameters to be modified or added. It should be in ``yaml`` format,
-      e.g. a config file is 'example.yaml', the content is:
+    Attributes:
+        dataset_name (str): Name of this dataset.
 
-        learning_rate: 0.001
+        dataset_path (str): Local file path of this dataset.
 
-        train_batch_size: 2048
+        field2type (dict): Dict mapping feature name (str) to its type (:class:`~recbole.utils.enum_type.FeatureType`).
 
-    - command line: It should be in the format as '---learning_rate=0.001'
+        field2source (dict): Dict mapping feature name (str) to its source
+            (:class:`~recbole.utils.enum_type.FeatureSource`).
+            Specially, if feature is loaded from Arg ``additional_feat_suffix``, its source has type str,
+            which is the suffix of its local file (also the suffix written in Arg ``additional_feat_suffix``).
 
-    - parameter dictionaries: It should be a dict, where the key is parameter name and the value is parameter value,
-      e.g. config_dict = {'learning_rate': 0.001}
+        field2id_token (dict): Dict mapping feature name (str) to a :class:`np.ndarray`, which stores the original token
+            of this feature. For example, if ``test`` is token-like feature, ``token_a`` is remapped to 1, ``token_b``
+            is remapped to 2. Then ``field2id_token['test'] = ['[PAD]', 'token_a', 'token_b']``. (Note that 0 is
+            always PADDING for token-like features.)
 
-    Configuration module allows the above three kind of external input format to be used together,
-    the priority order is as following:
+        field2token_id (dict): Dict mapping feature name (str) to a dict, which stores the token remap table
+            of this feature. For example, if ``test`` is token-like feature, ``token_a`` is remapped to 1, ``token_b``
+            is remapped to 2. Then ``field2token_id['test'] = {'[PAD]': 0, 'token_a': 1, 'token_b': 2}``.
+            (Note that 0 is always PADDING for token-like features.)
 
-    command line > parameter dictionaries > config file
+        field2seqlen (dict): Dict mapping feature name (str) to its sequence length (int).
+            For sequence features, their length can be either set in config,
+            or set to the max sequence length of this feature.
+            For token and float features, their length is 1.
 
-    e.g. If we set learning_rate=0.01 in config file, learning_rate=0.02 in command line,
-    learning_rate=0.03 in parameter dictionaries.
+        uid_field (str or None): The same as ``config['USER_ID_FIELD']``.
 
-    Finally the learning_rate is equal to 0.02.
+        iid_field (str or None): The same as ``config['ITEM_ID_FIELD']``.
+
+        label_field (str or None): The same as ``config['LABEL_FIELD']``.
+
+        time_field (str or None): The same as ``config['TIME_FIELD']``.
+
+        inter_feat (:class:`Interaction`): Internal data structure stores the interaction features.
+            It's loaded from file ``.inter``.
+
+        user_feat (:class:`Interaction` or None): Internal data structure stores the user features.
+            It's loaded from file ``.user`` if existed.
+
+        item_feat (:class:`Interaction` or None): Internal data structure stores the item features.
+            It's loaded from file ``.item`` if existed.
+
+        feat_name_list (list): A list contains all the features' name (:class:`str`), including additional features.
     """
     def __init__(self, config):
         super().__init__(config)
-
-    def _remap_ID_all(self):
-        """Remap all token-like fields.
-        """
-        for alias in self.alias.values():
-            remap_list = self._get_remap_list(alias)
-            self._remap(remap_list)
-
-        for field in self._rest_fields:
-            remap_list = self._get_remap_list(np.array([field]))
-            self._remap(remap_list)
 
     def change_direction(self):
         """Change direction for Validation and testing.
         """
         self.uid_field, self.iid_field = self.iid_field, self.uid_field
+        self.user_feat, self.item_feat = self.item_feat, self.user_feat
+        self.user_sents, self.item_sents = self.item_sents, self.user_sents
 
     def build(self):
         """Processing dataset according to evaluation setting, including Group, Order and Split.
@@ -123,3 +144,56 @@ class PJFDataset(Dataset):
             return [datasets[0], valid_g, valid_j, test_g, test_j]
         return datasets
 
+    def _load_data(self, token, dataset_path):
+        """Load features.
+
+        Firstly load interaction features, then user/item features optionally,
+        finally load additional features if ``config['additional_feat_suffix']`` is set.
+
+        Args:
+            token (str): dataset name.
+            dataset_path (str): path of dataset dir.
+        """
+        if not os.path.exists(dataset_path):
+            self._download()
+        self._load_inter_feat(token, dataset_path)
+        self.user_feat = self._load_user_or_item_feat(token, dataset_path, FeatureSource.USER, 'uid_field')
+        self.item_feat = self._load_user_or_item_feat(token, dataset_path, FeatureSource.ITEM, 'iid_field')
+        self.user_sents = self._load_user_or_item_sents(token, dataset_path, 'usents', 'uid_field')
+        self.item_sents = self._load_user_or_item_sents(token, dataset_path, 'isents', 'iid_field')
+        self._load_additional_feat(token, dataset_path)
+
+    def _load_user_or_item_sents(self, token, dataset_path, suf, field_name):
+        """Load user/item sents.
+
+        Args:
+            token (str): dataset name.
+            dataset_path (str): path of dataset dir.
+
+        Returns:
+            pandas.DataFrame: Loaded sents
+
+        Note:
+            ``user_id`` and ``item_id`` has source :obj:`~recbole.utils.enum_type.FeatureSource.USER_ID` and
+            :obj:`~recbole.utils.enum_type.FeatureSource.ITEM_ID`
+        """
+        feat_path = os.path.join(dataset_path, f'{token}.{suf}')
+        field = getattr(self, field_name, None)
+
+        if os.path.isfile(feat_path):
+            feat = self._load_feat(feat_path, suf)
+            self.logger.debug(f'[{suf}] feature loaded successfully from [{feat_path}].')
+        else:
+            feat = None
+            self.logger.debug(f'[{feat_path}] not found, [{suf}] features are not loaded.')
+
+        if feat is not None and field is None:
+            raise ValueError(f'{field_name} must be exist if {suf}_feat exist.')
+        if feat is not None and field not in feat:
+            raise ValueError(f'{field_name} must be loaded if {suf}_feat is loaded.')
+        if feat is not None:
+            feat.drop_duplicates(subset=[field], keep='first', inplace=True)
+
+        # if field in self.field2source:
+        #     self.field2source[field] = FeatureSource(source.value + '_id')
+        return feat
