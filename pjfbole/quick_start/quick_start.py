@@ -1,4 +1,4 @@
-# @Time   : 2022/03/02
+# @Time   : 2022/3/2
 # @Author : Chen Yang
 # @Email  : flust@ruc.edu.cn
 
@@ -9,20 +9,14 @@ pjfbole.quick_start
 import logging
 from logging import getLogger
 
-# import torch
-import pickle
+from recbole.utils import init_logger, init_seed, set_color
 
 from pjfbole.config import PJFConfig
-from recbole.utils import init_logger, init_seed
 from pjfbole.data import create_dataset, data_preparation
-
-# from recbole.data import create_dataset, data_preparation, save_split_dataloaders, load_split_dataloaders
-# from recbole.utils import init_logger, get_trainer, get_model, init_seed, set_color
+from pjfbole.utils import get_model, get_trainer
 
 
 def run_pjfbole(model=None, dataset=None, config_file_list=None, config_dict=None, saved=True):
-
-    
     # configurations initialization
     config = PJFConfig(model=model, dataset=dataset, config_file_list=config_file_list, config_dict=config_dict)
     init_seed(config['seed'], config['reproducibility'])
@@ -36,7 +30,6 @@ def run_pjfbole(model=None, dataset=None, config_file_list=None, config_dict=Non
     dataset = create_dataset(config)
     logger.info(dataset)
 
-    return 0
     # dataset splitting
     train_data, valid_data, test_data = data_preparation(config, dataset)
 
@@ -46,7 +39,8 @@ def run_pjfbole(model=None, dataset=None, config_file_list=None, config_dict=Non
     logger.info(model)
 
     # trainer loading and initialization
-    trainer = get_trainer(config['MODEL_TYPE'], config['model'])(config, model)
+    trainer = get_trainer(config['MODEL_TYPE'], config['model'],
+                          multi_direction=config['multi_direction'])(config, model)
 
     # model training
     best_valid_score, best_valid_result = trainer.fit(
