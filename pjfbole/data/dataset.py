@@ -86,15 +86,11 @@ class PJFDataset(Dataset):
         self.user_feat, self.item_feat = self.item_feat, self.user_feat
         self.user_sents, self.item_sents = self.item_sents, self.user_sents
 
-    def build(self):
-        """Processing dataset according to evaluation setting, including Group, Order and Split.
-        See :class:`~recbole.config.eval_setting.EvalSetting` for details.
+    def _change_feat_format(self):
+        super(PJFDataset, self)._change_feat_format()
+        self._sents_processing()
 
-        Returns:
-            list: List of built :class:`Dataset`.
-        """
-        self._change_feat_format()
-
+    def _sents_processing(self):
         def change_na(d):
             if isinstance(d, np.ndarray):
                 return d
@@ -105,58 +101,26 @@ class PJFDataset(Dataset):
             new_usents_df = pd.DataFrame({self.uid_field: np.arange(self.user_num)})
             self.user_sents = pd.merge(new_usents_df, self.user_sents, on=self.uid_field, how='left')
             self.user_sents[self.usents_field].fillna(value=0, inplace=True)
-            # self.user_sents.loc[0, self.usents_field] = [np.zeros([10, 10])]
-            # self.user_sents.replace(np.nan, [np.zeros([10, 10])], inplace=True)
             self.user_sents[self.usents_field] = \
                 self.user_sents[self.usents_field].apply(change_na)
         if self.item_sents is not None:
             new_isents_df = pd.DataFrame({self.iid_field: np.arange(self.item_num)})
             self.item_sents = pd.merge(new_isents_df, self.item_sents, on=self.iid_field, how='left')
             self.item_sents[self.isents_field].fillna(value=0, inplace=True)
-            # self.item_sents.loc[0, self.isents_field] = [np.zeros([10, 10])]
-            # self.item_sents.replace(np.nan, [np.zeros([10, 10])], inplace=True)
             self.item_sents[self.isents_field] = \
                 self.item_sents[self.isents_field].apply(change_na)
 
         self.user_sents = self._sents_dataframe_to_interaction(self.user_sents)
         self.item_sents = self._sents_dataframe_to_interaction(self.item_sents)
 
-        if self.benchmark_filename_list is not None:
-            cumsum = list(np.cumsum(self.file_size_list))
-            datasets = [self.copy(self.inter_feat[start:end]) for start, end in zip([0] + cumsum[:-1], cumsum)]
-        else:
-            # ordering
-            ordering_args = self.config['eval_args']['order']
-            if ordering_args == 'RO':
-                self.shuffle()
-            elif ordering_args == 'TO':
-                self.sort(by=self.time_field)
-            else:
-                raise NotImplementedError(f'The ordering_method [{ordering_args}] has not been implemented.')
+    def build(self):
+        """Processing dataset according to evaluation setting, including Group, Order and Split.
+        See :class:`~recbole.config.eval_setting.EvalSetting` for details.
 
-            # splitting & grouping
-            split_args = self.config['eval_args']['split']
-            if split_args is None:
-                raise ValueError('The split_args in eval_args should not be None.')
-            if not isinstance(split_args, dict):
-                raise ValueError(f'The split_args [{split_args}] should be a dict.')
-
-            split_mode = list(split_args.keys())[0]
-            assert len(split_args.keys()) == 1
-            group_by = self.config['eval_args']['group_by']
-            if split_mode == 'RS':
-                if not isinstance(split_args['RS'], list):
-                    raise ValueError(f'The value of "RS" [{split_args}] should be a list.')
-                if group_by is None or group_by.lower() == 'none':
-                    datasets = self.split_by_ratio(split_args['RS'], group_by=None)
-                elif group_by == 'user':
-                    datasets = self.split_by_ratio(split_args['RS'], group_by=self.uid_field)
-                else:
-                    raise NotImplementedError(f'The grouping method [{group_by}] has not been implemented.')
-            elif split_mode == 'LS':
-                datasets = self.leave_one_out(group_by=self.uid_field, leave_one_mode=split_args['LS'])
-            else:
-                raise NotImplementedError(f'The splitting_method [{split_mode}] has not been implemented.')
+        Returns:
+            list: List of built :class:`Dataset`.
+        """
+        datasets = super(PJFDataset, self).build()
 
         if self.config['multi_direction']:
             d = self.config['DIRECT_FIELD']
@@ -176,20 +140,9 @@ class PJFDataset(Dataset):
     def _get_field_from_config(self):
         """Initialization common field names.
         """
-        self.uid_field = self.config['USER_ID_FIELD']
-        self.iid_field = self.config['ITEM_ID_FIELD']
-        self.label_field = self.config['LABEL_FIELD']
-        self.time_field = self.config['TIME_FIELD']
+        super(PJFDataset, self)._get_field_from_config()
         self.usents_field = self.config['USER_SENTS_FIELD']
         self.isents_field = self.config['ITEM_SENTS_FIELD']
-
-        if (self.uid_field is None) ^ (self.iid_field is None):
-            raise ValueError(
-                'USER_ID_FIELD and ITEM_ID_FIELD need to be set at the same time or not set at the same time.'
-            )
-
-        self.logger.debug(set_color('uid_field', 'blue') + f': {self.uid_field}')
-        self.logger.debug(set_color('iid_field', 'blue') + f': {self.iid_field}')
         self.logger.debug(set_color('usents_field', 'blue') + f': {self.usents_field}')
         self.logger.debug(set_color('isents_field', 'blue') + f': {self.isents_field}')
 
@@ -211,7 +164,6 @@ class PJFDataset(Dataset):
 
         self.user_sents = self._load_user_or_item_sents(token, dataset_path, 'usents', 'uid_field', 'usents_field')
         self.item_sents = self._load_user_or_item_sents(token, dataset_path, 'isents', 'iid_field', 'isents_field')
-
         self.filter_data_with_no_sents()
 
         self._load_additional_feat(token, dataset_path)
