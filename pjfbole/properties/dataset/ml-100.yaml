@@ -20,7 +20,7 @@ ITEM_SENTS_FIELD: job_sents
 # Selectively Loading
 load_col:
     inter: [user_id, item_id, rating, timestamp, direct]
-    item: [item_id, release_year]
+    item: [item_id, class]
     usents: [user_id, geek_sents]
     isents: [item_id, job_sents]
 unload_col: ~

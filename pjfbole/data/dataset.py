@@ -129,11 +129,30 @@ class PJFDataset(Dataset):
                 sent_num += 1
             return sents
 
+        self.wd2id = {
+            '[WD_PAD]': 0,
+            '[WD_MISS]': 1
+        }
+        self.id2wd = ['[WD_PAD]', '[WD_MISS]']
+
+        def word_map(sent):
+            value = []
+            for i, wd in enumerate(sent):
+                if wd not in self.wd2id.keys():
+                    self.wd2id[wd] = i + 2
+                    self.id2wd.append(wd)
+                value.append(self.wd2id[wd])
+            return value
+
         if feat is not None and field is None:
             raise ValueError(f'{field_name} must be exist if {suf}_feat exist.')
         if feat is not None and field not in feat:
             raise ValueError(f'{field_name} must be loaded if {suf}_feat is loaded.')
         if feat is not None:
+            # tokens = [feat[sents_field].agg(np.concatenate)]
+            # tokens = np.concatenate(tokens)
+            # new_word_ids_list =
+            feat[sents_field] = feat[sents_field].apply(word_map)
             feat = feat.groupby(field).apply(lambda x: get_sents([i for i in x[sents_field]])).to_frame()
             feat.reset_index(inplace=True)
             feat.columns = [field, sents_field]
