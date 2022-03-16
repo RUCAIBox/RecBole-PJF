@@ -9,10 +9,13 @@ pjfbole.data.pjf_dataset
 
 import os
 import numpy as np
+import pandas as pd
+import torch
 
 from recbole.data.dataset import Dataset
-from recbole.utils import set_color, FeatureSource
+from recbole.utils import set_color, FeatureSource, FeatureType
 # from pjfbole.enum_type import FeatureSource
+from recbole.data.interaction import Interaction
 
 
 class PJFDataset(Dataset):
@@ -92,6 +95,32 @@ class PJFDataset(Dataset):
         """
         self._change_feat_format()
 
+        def change_na(d):
+            if isinstance(d, np.ndarray):
+                return d
+            else:
+                return np.zeros([10,10])
+
+        if self.user_sents is not None:
+            new_usents_df = pd.DataFrame({self.uid_field: np.arange(self.user_num)})
+            self.user_sents = pd.merge(new_usents_df, self.user_sents, on=self.uid_field, how='left')
+            self.user_sents[self.usents_field].fillna(value=0, inplace=True)
+            # self.user_sents.loc[0, self.usents_field] = [np.zeros([10, 10])]
+            # self.user_sents.replace(np.nan, [np.zeros([10, 10])], inplace=True)
+            self.user_sents[self.usents_field] = \
+                self.user_sents[self.usents_field].apply(change_na)
+        if self.item_sents is not None:
+            new_isents_df = pd.DataFrame({self.iid_field: np.arange(self.item_num)})
+            self.item_sents = pd.merge(new_isents_df, self.item_sents, on=self.iid_field, how='left')
+            self.item_sents[self.isents_field].fillna(value=0, inplace=True)
+            # self.item_sents.loc[0, self.isents_field] = [np.zeros([10, 10])]
+            # self.item_sents.replace(np.nan, [np.zeros([10, 10])], inplace=True)
+            self.item_sents[self.isents_field] = \
+                self.item_sents[self.isents_field].apply(change_na)
+
+        self.user_sents = self._sents_dataframe_to_interaction(self.user_sents)
+        self.item_sents = self._sents_dataframe_to_interaction(self.item_sents)
+
         if self.benchmark_filename_list is not None:
             cumsum = list(np.cumsum(self.file_size_list))
             datasets = [self.copy(self.inter_feat[start:end]) for start, end in zip([0] + cumsum[:-1], cumsum)]
@@ -144,6 +173,26 @@ class PJFDataset(Dataset):
             return [datasets[0], valid_g, valid_j, test_g, test_j]
         return datasets
 
+    def _get_field_from_config(self):
+        """Initialization common field names.
+        """
+        self.uid_field = self.config['USER_ID_FIELD']
+        self.iid_field = self.config['ITEM_ID_FIELD']
+        self.label_field = self.config['LABEL_FIELD']
+        self.time_field = self.config['TIME_FIELD']
+        self.usents_field = self.config['USER_SENTS_FIELD']
+        self.isents_field = self.config['ITEM_SENTS_FIELD']
+
+        if (self.uid_field is None) ^ (self.iid_field is None):
+            raise ValueError(
+                'USER_ID_FIELD and ITEM_ID_FIELD need to be set at the same time or not set at the same time.'
+            )
+
+        self.logger.debug(set_color('uid_field', 'blue') + f': {self.uid_field}')
+        self.logger.debug(set_color('iid_field', 'blue') + f': {self.iid_field}')
+        self.logger.debug(set_color('usents_field', 'blue') + f': {self.usents_field}')
+        self.logger.debug(set_color('isents_field', 'blue') + f': {self.isents_field}')
+
     def _load_data(self, token, dataset_path):
         """Load features.
 
@@ -159,26 +208,25 @@ class PJFDataset(Dataset):
         self._load_inter_feat(token, dataset_path)
         self.user_feat = self._load_user_or_item_feat(token, dataset_path, FeatureSource.USER, 'uid_field')
         self.item_feat = self._load_user_or_item_feat(token, dataset_path, FeatureSource.ITEM, 'iid_field')
-        self.user_sents = self._load_user_or_item_sents(token, dataset_path, 'usents', 'uid_field')
-        self.item_sents = self._load_user_or_item_sents(token, dataset_path, 'isents', 'iid_field')
+
+        self.user_sents = self._load_user_or_item_sents(token, dataset_path, 'usents', 'uid_field', 'usents_field')
+        self.item_sents = self._load_user_or_item_sents(token, dataset_path, 'isents', 'iid_field', 'isents_field')
+
+        self.filter_data_with_no_sents()
+
         self._load_additional_feat(token, dataset_path)
 
-    def _load_user_or_item_sents(self, token, dataset_path, suf, field_name):
+    def _load_user_or_item_sents(self, token, dataset_path, suf, field_name, field_sents_name):
         """Load user/item sents.
 
         Args:
-            token (str): dataset name.
-            dataset_path (str): path of dataset dir.
 
         Returns:
             pandas.DataFrame: Loaded sents
-
-        Note:
-            ``user_id`` and ``item_id`` has source :obj:`~recbole.utils.enum_type.FeatureSource.USER_ID` and
-            :obj:`~recbole.utils.enum_type.FeatureSource.ITEM_ID`
         """
         feat_path = os.path.join(dataset_path, f'{token}.{suf}')
         field = getattr(self, field_name, None)
+        sents_field = getattr(self, field_sents_name, None)
 
         if os.path.isfile(feat_path):
             feat = self._load_feat(feat_path, suf)
@@ -192,8 +240,74 @@ class PJFDataset(Dataset):
         if feat is not None and field not in feat:
             raise ValueError(f'{field_name} must be loaded if {suf}_feat is loaded.')
         if feat is not None:
-            feat.drop_duplicates(subset=[field], keep='first', inplace=True)
+            feat = feat.groupby(field).apply(lambda x: self.get_sents([i for i in x[sents_field]])).to_frame()
+            feat.reset_index(inplace=True)
+            feat.columns = [field, sents_field]
 
-        # if field in self.field2source:
-        #     self.field2source[field] = FeatureSource(source.value + '_id')
         return feat
+
+    def get_sents(self, single_sents: list):
+        array_size = [self.config['max_sent_num'], self.config['max_sent_len']]
+        sents = np.zeros(array_size)
+        sent_num = 0
+        for s in single_sents:
+            sents[sent_num] = np.pad(s, (0, array_size[1] - len(s)))  # sents[idx] 第idx个用户的多个句子组成的 tensor 矩阵
+            sent_num += 1
+
+        return sents
+
+    def filter_data_with_no_sents(self):
+        self.inter_feat = self.inter_feat[self.inter_feat[self.uid_field].isin(self.user_sents[self.uid_field])]
+        self.inter_feat = self.inter_feat[self.inter_feat[self.iid_field].isin(self.item_sents[self.iid_field])]
+
+    def join(self, df):
+        """Given interaction feature, join user/item feature into it.
+
+        Args:
+            df (Interaction): Interaction feature to be joint.
+
+        Returns:
+            Interaction: Interaction feature after joining operation.
+        """
+        if self.user_feat is not None and self.uid_field in df:
+            df.update(self.user_feat[df[self.uid_field]])
+        if self.item_feat is not None and self.iid_field in df:
+            df.update(self.item_feat[df[self.iid_field]])
+
+        if self.user_sents is not None and self.uid_field in df:
+            df.update(self.user_sents[df[self.uid_field]])
+        if self.item_sents is not None and self.iid_field in df:
+            df.update(self.item_sents[df[self.iid_field]])
+        return df
+
+    def field2feats(self, field):
+        if field not in self.field2source:
+            raise ValueError(f'Field [{field}] not defined in dataset.')
+        if field == self.uid_field:
+            feats = [self.inter_feat]
+            if self.user_feat is not None:
+                feats.append(self.user_feat)
+            if self.user_sents is not None:
+                feats.append(self.user_sents)
+        elif field == self.iid_field:
+            feats = [self.inter_feat]
+            if self.item_feat is not None:
+                feats.append(self.item_feat)
+            if self.item_sents is not None:
+                feats.append(self.item_sents)
+        else:
+            source = self.field2source[field]
+            if not isinstance(source, str):
+                source = source.value
+            feats = [getattr(self, f'{source}_feat')]
+        return feats
+
+    def _sents_dataframe_to_interaction(self, data):
+        new_data = {}
+        for k in data:
+            value = data[k].values
+            if k in [self.uid_field, self.iid_field]:
+                new_data[k] = torch.LongTensor(value)
+            else:
+                new_data[k] = value
+        return Interaction(new_data)
