@@ -18,62 +18,8 @@ from recbole.data.interaction import Interaction
 
 
 class PJFDataset(Dataset):
-    """:class:`Dataset` stores the original dataset in memory.
-    It provides many useful functions for data preprocessing, such as k-core data filtering and missing value
-    imputation. Features are stored as :class:`pandas.DataFrame` inside :class:`~recbole.data.dataset.dataset.Dataset`.
-    General and Context-aware Models can use this class.
+    """:class:`PJFDataset` is inherited from :class:`recbole.data.dataset.Dataset`
 
-    By calling method :meth:`~recbole.data.dataset.dataset.Dataset.build`, it will processing dataset into
-    DataLoaders, according to :class:`~recbole.config.eval_setting.EvalSetting`.
-
-    Args:
-        config (Config): Global configuration object.
-
-    Attributes:
-        dataset_name (str): Name of this dataset.
-
-        dataset_path (str): Local file path of this dataset.
-
-        field2type (dict): Dict mapping feature name (str) to its type (:class:`~recbole.utils.enum_type.FeatureType`).
-
-        field2source (dict): Dict mapping feature name (str) to its source
-            (:class:`~recbole.utils.enum_type.FeatureSource`).
-            Specially, if feature is loaded from Arg ``additional_feat_suffix``, its source has type str,
-            which is the suffix of its local file (also the suffix written in Arg ``additional_feat_suffix``).
-
-        field2id_token (dict): Dict mapping feature name (str) to a :class:`np.ndarray`, which stores the original token
-            of this feature. For example, if ``test`` is token-like feature, ``token_a`` is remapped to 1, ``token_b``
-            is remapped to 2. Then ``field2id_token['test'] = ['[PAD]', 'token_a', 'token_b']``. (Note that 0 is
-            always PADDING for token-like features.)
-
-        field2token_id (dict): Dict mapping feature name (str) to a dict, which stores the token remap table
-            of this feature. For example, if ``test`` is token-like feature, ``token_a`` is remapped to 1, ``token_b``
-            is remapped to 2. Then ``field2token_id['test'] = {'[PAD]': 0, 'token_a': 1, 'token_b': 2}``.
-            (Note that 0 is always PADDING for token-like features.)
-
-        field2seqlen (dict): Dict mapping feature name (str) to its sequence length (int).
-            For sequence features, their length can be either set in config,
-            or set to the max sequence length of this feature.
-            For token and float features, their length is 1.
-
-        uid_field (str or None): The same as ``config['USER_ID_FIELD']``.
-
-        iid_field (str or None): The same as ``config['ITEM_ID_FIELD']``.
-
-        label_field (str or None): The same as ``config['LABEL_FIELD']``.
-
-        time_field (str or None): The same as ``config['TIME_FIELD']``.
-
-        inter_feat (:class:`Interaction`): Internal data structure stores the interaction features.
-            It's loaded from file ``.inter``.
-
-        user_feat (:class:`Interaction` or None): Internal data structure stores the user features.
-            It's loaded from file ``.user`` if existed.
-
-        item_feat (:class:`Interaction` or None): Internal data structure stores the item features.
-            It's loaded from file ``.item`` if existed.
-
-        feat_name_list (list): A list contains all the features' name (:class:`str`), including additional features.
     """
     def __init__(self, config):
         super().__init__(config)
@@ -124,7 +70,7 @@ class PJFDataset(Dataset):
 
         if self.config['multi_direction']:
             direct_field = self.config['DIRECT_FIELD']
-            geek_direct = datasets[0].field2token_id[d]['0']
+            geek_direct = datasets[0].field2token_id[direct_field]['0']
             valid_g = self.copy(datasets[1].inter_feat[datasets[1].inter_feat[direct_field] == geek_direct])
 
             valid_j = self.copy(datasets[1].inter_feat[datasets[1].inter_feat[direct_field] != geek_direct])
@@ -147,10 +93,7 @@ class PJFDataset(Dataset):
         self.logger.debug(set_color('isents_field', 'blue') + f': {self.isents_field}')
 
     def _load_data(self, token, dataset_path):
-        """Load features.
-
-        Firstly load interaction features, then user/item features optionally,
-        finally load additional features if ``config['additional_feat_suffix']`` is set.
+        """Load features of the resume and job description.
 
         Args:
             token (str): dataset name.
@@ -161,17 +104,14 @@ class PJFDataset(Dataset):
         self.item_sents = self._load_user_or_item_sents(token, dataset_path, 'isents', 'iid_field', 'isents_field')
         self.filter_data_with_no_sents()
 
-    def _load_user_or_item_sents(self, token, dataset_path, suf, field_name, field_sents_name):
+    def _load_user_or_item_sents(self, token, dataset_path, suf, field_name, sents_field_name):
         """Load user/item sents.
-
-        Args:
-
         Returns:
             pandas.DataFrame: Loaded sents
         """
         feat_path = os.path.join(dataset_path, f'{token}.{suf}')
         field = getattr(self, field_name, None)
-        sents_field = getattr(self, field_sents_name, None)
+        sents_field = getattr(self, sents_field_name, None)
 
         if os.path.isfile(feat_path):
             feat = self._load_feat(feat_path, suf)
@@ -201,11 +141,14 @@ class PJFDataset(Dataset):
         return feat
 
     def filter_data_with_no_sents(self):
+        """Remove interactions without text from both sides
+
+        """
         self.inter_feat = self.inter_feat[self.inter_feat[self.uid_field].isin(self.user_sents[self.uid_field])]
         self.inter_feat = self.inter_feat[self.inter_feat[self.iid_field].isin(self.item_sents[self.iid_field])]
 
     def join(self, df):
-        """Given interaction feature, join user/item feature into it.
+        """Given interaction feature, join user/item sents into it.
 
         Args:
             df (Interaction): Interaction feature to be joint.
