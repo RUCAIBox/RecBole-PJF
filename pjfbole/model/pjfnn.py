@@ -4,6 +4,7 @@
 
 import torch
 import torch.nn as nn
+from torch.nn.init import xavier_normal_
 
 from recbole.model.abstract_recommender import GeneralRecommender
 from recbole.model.init import xavier_normal_initialization
@@ -11,54 +12,104 @@ from recbole.model.loss import BPRLoss
 from recbole.utils import InputType
 
 
+class TextCNN(nn.Module):
+    def __init__(self, channels, kernel_size, pool_size, dim, method='max'):
+        super(TextCNN, self).__init__()
+        self.net1 = nn.Sequential(
+            nn.Conv2d(channels, channels, kernel_size[0]),
+            nn.BatchNorm2d(channels),
+            nn.ReLU(),
+            nn.MaxPool2d(pool_size)
+        )
+        self.net2 = nn.Sequential(
+            nn.Conv2d(channels, channels, kernel_size[1]),
+            nn.BatchNorm2d(channels),
+            nn.ReLU(),
+            nn.AdaptiveMaxPool2d((1, dim))
+        )
+        if method == 'max':
+            self.pool = nn.AdaptiveMaxPool2d((1, dim))
+        elif method == 'mean':
+            self.pool = nn.AdaptiveAvgPool2d((1, dim))
+        else:
+            raise ValueError('method {} not exist'.format(method))
+
+    def forward(self, x):
+        # import pdb
+        # pdb.set_trace()   # [2048, 20, 30, 64]
+        x = self.net1(x)  # [2048, 20, 13, 64]
+        x = self.net2(x).squeeze(2)  # [2048, 20, 64]
+        x = self.pool(x).squeeze(1)  # [2048, 64]
+        return x
+
+
 class PJFNN(GeneralRecommender):
     input_type = InputType.PAIRWISE
+
     def __init__(self, config, dataset):
         super(PJFNN, self).__init__(config, dataset)
         self.USER_SENTS = config['USER_SENTS_FIELD']
         self.ITEM_SENTS = config['ITEM_SENTS_FIELD']
         # load parameters info
         self.embedding_size = config['embedding_size']
+        self.geek_channels = config['max_sent_num']  # 10
+        self.job_channels = config['max_sent_num']  # 10
+        self.emb = nn.Embedding(len(dataset.wd2id.keys()), self.embedding_size, padding_idx=0)
 
         # define layers and loss
-        self.user_embedding = nn.Embedding(self.n_users, self.embedding_size)
-        self.item_embedding = nn.Embedding(self.n_items, self.embedding_size)
-        self.loss = BPRLoss()
+        self.geek_layer = TextCNN(
+            channels=self.geek_channels,
+            kernel_size=[(5, 1), (3, 1)],
+            pool_size=(2, 1),
+            dim=self.embedding_size,
+            method='max'
+        )
 
+        self.job_layer = TextCNN(
+            channels=self.job_channels,
+            kernel_size=[(5, 1), (5, 1)],
+            pool_size=(2, 1),
+            dim=self.embedding_size,
+            method='mean'
+        )
+
+        self.mlp = nn.Sequential(
+            nn.Linear(self.embedding_size, self.embedding_size),
+            nn.ReLU(),
+            nn.Linear(self.embedding_size, 1)
+        )
+        # self.loss = nn.BCEWithLogitsLoss()
+
+        self.loss = BPRLoss()
         # parameters initialization
         self.apply(xavier_normal_initialization)
 
-    def get_user_embedding(self, user):
-        return self.user_embedding(user)
-
-    def get_item_embedding(self, item):
-        return self.item_embedding(item)
-
-    def forward(self, user, item):
-        user_e = self.get_user_embedding(user)
-        item_e = self.get_item_embedding(item)
-        return user_e, item_e
+    def forward(self, geek_sents, job_sents):
+        geek_vec = self.emb(geek_sents)
+        job_vec = self.emb(job_sents)
+        geek_vec = self.geek_layer(geek_vec)
+        job_vec = self.job_layer(job_vec)
+        x = geek_vec * job_vec
+        x = self.mlp(x).squeeze(1)
+        return x
 
     def calculate_loss(self, interaction):
-        user = interaction[self.USER_ID]
-        pos_item = interaction[self.ITEM_ID]
-        neg_item = interaction[self.NEG_ITEM_ID]
+        geek_sents = interaction[self.USER_SENTS].long()
+        job_sents = interaction[self.ITEM_SENTS].long()
+        neg_job_sents = interaction['neg_' + self.ITEM_SENTS].long()
 
-        user_e, pos_e = self.forward(user, pos_item)
-        neg_e = self.get_item_embedding(neg_item)
-        pos_item_score, neg_item_score = torch.mul(user_e, pos_e).sum(dim=1), torch.mul(user_e, neg_e).sum(dim=1)
-        loss = self.loss(pos_item_score, neg_item_score)
-        return loss
+        output_pos = self.forward(geek_sents, job_sents)
+        output_neg = self.forward(geek_sents, neg_job_sents)
+
+        # label_pos = interaction['label_pos'].to(self.config['device']).squeeze()
+        # label_neg = interaction['label_neg'].to(self.config['device']).squeeze()
+        #
+        # loss = self.loss(output_pos, torch.ones_like(output_pos))
+        # loss += self.loss(output_neg, torch.zeros_like(output_neg))
+        return self.loss(output_pos, output_neg)
 
     def predict(self, interaction):
-        user = interaction[self.USER_ID]
-        item = interaction[self.ITEM_ID]
-        user_e, item_e = self.forward(user, item)
-        return torch.mul(user_e, item_e).sum(dim=1)
+        geek_sents = interaction[self.USER_SENTS].long()
+        job_sents = interaction[self.ITEM_SENTS].long()
+        return torch.sigmoid(self.forward(geek_sents, job_sents))
 
-    def full_sort_predict(self, interaction):
-        user = interaction[self.USER_ID]
-        user_e = self.get_user_embedding(user)
-        all_item_e = self.item_embedding.weight
-        score = torch.matmul(user_e, all_item_e.transpose(0, 1))
-        return score.view(-1)
