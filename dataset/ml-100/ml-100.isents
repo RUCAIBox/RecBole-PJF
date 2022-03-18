@@ -1,9 +1,9 @@
-item_id:token	movie_title:token_seq	release_year:token	class:token_seq
-1	Toy Story	1995	Animation Children's Comedy
+item_id:token	movie_title:token_seq	release_year:token	job_sents:token_seq
+2	Toy Story	1995	Animation Children's Comedy
 2	GoldenEye	1995	Action Adventure Thriller
-3	Four Rooms	1995	Thriller
-4	Get Shorty	1995	Action Comedy Drama
-5	Copycat	1995	Crime Drama Thriller
+2	Four Rooms	1995	Thriller
+2	Get Shorty	1995	Action Comedy Drama
+2	Copycat	1995	Crime Drama Thriller
 6	Shanghai Triad (Yao a yao yao dao waipo qiao)	1995	Drama
 7	Twelve Monkeys	1995	Drama Sci-Fi
 8	Babe	1995	Children's Comedy Drama
