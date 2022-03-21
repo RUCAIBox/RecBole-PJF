@@ -6,6 +6,7 @@
 pjfbole.data.pjf_dataset
 ##########################
 """
+from typing import Any
 
 import os
 import numpy as np
@@ -22,6 +23,11 @@ class PJFDataset(Dataset):
 
     """
     def __init__(self, config):
+        self.wd2id = {
+            '[WD_PAD]': 0,
+            '[WD_MISS]': 1
+        }
+        self.id2wd = ['[WD_PAD]', '[WD_MISS]']
         super().__init__(config)
 
     def change_direction(self):
@@ -42,19 +48,31 @@ class PJFDataset(Dataset):
             else:
                 return np.zeros([self.config['max_sent_num'], self.config['max_sent_len']])
 
+        def fill_nan_long(value):
+            if isinstance(value, np.ndarray):
+                return value
+            else:
+                return np.zeros([1])
+
         if self.user_sents is not None:
             new_usents_df = pd.DataFrame({self.uid_field: np.arange(self.user_num)})
             self.user_sents = pd.merge(new_usents_df, self.user_sents, on=self.uid_field, how='left')
             self.user_sents[self.usents_field].fillna(value=0, inplace=True)
+            self.user_sents['long_' + self.usents_field].fillna(value=0, inplace=True)
             self.user_sents[self.usents_field] = \
                 self.user_sents[self.usents_field].apply(fill_nan)
+            self.user_sents['long_' + self.usents_field] = \
+                self.user_sents['long_' + self.usents_field].apply(fill_nan_long)
 
         if self.item_sents is not None:
             new_isents_df = pd.DataFrame({self.iid_field: np.arange(self.item_num)})
             self.item_sents = pd.merge(new_isents_df, self.item_sents, on=self.iid_field, how='left')
             self.item_sents[self.isents_field].fillna(value=0, inplace=True)
+            self.item_sents['long_' + self.isents_field].fillna(value=0, inplace=True)
             self.item_sents[self.isents_field] = \
                 self.item_sents[self.isents_field].apply(fill_nan)
+            self.item_sents['long_' + self.isents_field] = \
+                self.item_sents['long_' + self.isents_field].apply(fill_nan_long)
 
         self.user_sents = self._sents_dataframe_to_interaction(self.user_sents)
         self.item_sents = self._sents_dataframe_to_interaction(self.item_sents)
@@ -120,42 +138,49 @@ class PJFDataset(Dataset):
             feat = None
             self.logger.debug(f'[{feat_path}] not found, [{suf}] features are not loaded.')
 
+        def word_map(sent):
+            value = []
+            for i, wd in enumerate(sent):
+                if wd not in self.wd2id.keys():
+                    self.wd2id[wd] = len(self.wd2id)
+                    self.id2wd.append(wd)
+                value.append(self.wd2id[wd])
+            return value
+
+        def get_long_sent(single_sents: list):
+            long_sent = np.array([])
+            for s in single_sents:
+                long_sent = np.append(long_sent, s)
+                if len(long_sent) > self.config['max_longsent_len']:
+                    return long_sent[: self.config['max_longsent_len']]
+            return long_sent
+
         def get_sents(single_sents: list):
             array_size = [self.config['max_sent_num'], self.config['max_sent_len']]
             sents = np.zeros(array_size)
             sent_num = 0
             for s in single_sents:
-                sents[sent_num] = np.pad(s, (0, array_size[1] - len(s)))  # sents[idx] 第idx个用户的多个句子组成的 tensor 矩阵
+                if len(s) > array_size[1]:
+                    sents[sent_num] = s[:array_size[1]]
+                else:
+                    sents[sent_num] = np.pad(s, (0, array_size[1] - len(s)))  # sents[idx] 第idx个用户的多个句子组成的 tensor 矩阵
                 sent_num += 1
+                if sent_num >= array_size[0]:
+                    break
             return sents
-
-        self.wd2id = {
-            '[WD_PAD]': 0,
-            '[WD_MISS]': 1
-        }
-        self.id2wd = ['[WD_PAD]', '[WD_MISS]']
-
-        def word_map(sent):
-            value = []
-            for i, wd in enumerate(sent):
-                if wd not in self.wd2id.keys():
-                    self.wd2id[wd] = i + 2
-                    self.id2wd.append(wd)
-                value.append(self.wd2id[wd])
-            return value
 
         if feat is not None and field is None:
             raise ValueError(f'{field_name} must be exist if {suf}_feat exist.')
         if feat is not None and field not in feat:
             raise ValueError(f'{field_name} must be loaded if {suf}_feat is loaded.')
         if feat is not None:
-            # tokens = [feat[sents_field].agg(np.concatenate)]
-            # tokens = np.concatenate(tokens)
-            # new_word_ids_list =
             feat[sents_field] = feat[sents_field].apply(word_map)
-            feat = feat.groupby(field).apply(lambda x: get_sents([i for i in x[sents_field]])).to_frame()
-            feat.reset_index(inplace=True)
-            feat.columns = [field, sents_field]
+            long_sent = feat.groupby(field).apply(lambda x: get_long_sent([i for i in x[sents_field]])).to_frame()
+            long_sent.reset_index(inplace=True)
+            sents = feat.groupby(field).apply(lambda x: get_sents([i for i in x[sents_field]])).to_frame()
+            sents.reset_index(inplace=True)
+            feat = pd.merge(sents, long_sent, on=field)
+            feat.columns = [field, sents_field, 'long_' + sents_field]
 
         return feat
 

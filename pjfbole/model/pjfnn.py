@@ -50,6 +50,7 @@ class PJFNN(GeneralRecommender):
         super(PJFNN, self).__init__(config, dataset)
         self.USER_SENTS = config['USER_SENTS_FIELD']
         self.ITEM_SENTS = config['ITEM_SENTS_FIELD']
+        self.neg_prefix = config['NEG_PREFIX']
         # load parameters info
         self.embedding_size = config['embedding_size']
         self.geek_channels = config['max_sent_num']  # 10
@@ -96,7 +97,7 @@ class PJFNN(GeneralRecommender):
     def calculate_loss(self, interaction):
         geek_sents = interaction[self.USER_SENTS].long()
         job_sents = interaction[self.ITEM_SENTS].long()
-        neg_job_sents = interaction['neg_' + self.ITEM_SENTS].long()
+        neg_job_sents = interaction[self.neg_prefix + self.ITEM_SENTS].long()
 
         output_pos = self.forward(geek_sents, job_sents)
         output_neg = self.forward(geek_sents, neg_job_sents)
