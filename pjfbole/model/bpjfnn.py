@@ -54,7 +54,8 @@ class BPJFNN(GeneralRecommender):
         )
 
         self.sigmoid = nn.Sigmoid()
-        self.loss = nn.BCEWithLogitsLoss()
+        # self.loss = nn.BCEWithLogitsLoss()
+        self.loss = BPRLoss()
 
     def _single_bpj_layer(self, interaction, token, field):
         longsent = interaction[field].long()
