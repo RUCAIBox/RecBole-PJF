@@ -14,15 +14,15 @@ LABEL_FIELD: label
 # NegSample Prefix for Pair-wise DataLoader
 NEG_PREFIX: neg_
 # Text Model Needed
-USER_SENTS_FIELD: geek_sents
-ITEM_SENTS_FIELD: job_sents
+USER_DOC_FIELD: geek_sents
+ITEM_DOC_FIELD: job_sents
 
 # Selectively Loading
 load_col:
     inter: [user_id, item_id, rating, timestamp, direct]
     item: [item_id, class]
-    usents: [user_id, geek_sents]
-    isents: [item_id, job_sents]
+    udoc: [user_id, geek_sents]
+    idoc: [item_id, job_sents]
 unload_col: ~
 unused_col: ~
 

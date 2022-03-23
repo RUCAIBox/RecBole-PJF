@@ -1,0 +1,9 @@
+# Data
+max_longsent_len: 256
+
+# Model
+embedding_size: 128
+hidden_size: 32
+dropout: 0.2
+num_layers: 1
+

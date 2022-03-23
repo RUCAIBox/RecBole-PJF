@@ -64,6 +64,18 @@ class PJFConfig(Config):
 
         return final_model, final_model_class, final_dataset
 
+    def _set_default_parameters(self):
+        super(PJFConfig, self)._set_default_parameters()
+        default_max_sent_num = 10
+        default_max_sent_len = 10
+        default_max_longsent_len = 256
+        if 'max_sent_num' not in self.final_config_dict:
+            self.final_config_dict['max_sent_num'] = default_max_sent_num
+        if 'max_sent_len' not in self.final_config_dict:
+            self.final_config_dict['max_sent_len'] = default_max_sent_len
+        if 'max_longsent_len' not in self.final_config_dict:
+            self.final_config_dict['max_longsent_len'] = default_max_longsent_len
+
     def change_direction(self):
         self.final_config_dict['USER_ID_FIELD'], self.final_config_dict['ITEM_ID_FIELD'] = \
             self.final_config_dict['ITEM_ID_FIELD'], self.final_config_dict['USER_ID_FIELD']
