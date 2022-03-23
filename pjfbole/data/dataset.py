@@ -57,6 +57,8 @@ class PJFDataset(Dataset):
             for j in tqdm(self.item_doc[self.idoc_field + '_vec']):
                 self.bert_item = torch.cat([self.bert_item, j], dim=0)
 
+        # self.bert_user
+        # self.bert_item
         # self.iid2vec = dict()
         # for i, j in zip(self.item_doc[self.iid_field], self.item_doc[self.idoc_field + '_vec']):
         #     self.iid2vec[i] = j
@@ -219,7 +221,7 @@ class PJFDataset(Dataset):
                 for wd in line:
                     s += wd + ' '
             input = self.tokenizer(s, return_tensors="pt")
-            output = self.model(**input)[0][:, 0]
+            output = self.model(**input)[0][:, 0].detach()
             return output
 
         if self.config['ADD_BERT']:
@@ -245,6 +247,7 @@ class PJFDataset(Dataset):
             feat.columns = [field, doc_field, 'long_' + doc_field]
 
         if self.config['ADD_BERT']:
+            feat = feat[feat[field].isin(vec[field])]
             feat = pd.merge(feat, vec, on=field)
             feat.columns = [field, doc_field, 'long_' + doc_field, doc_field + '_vec']
 

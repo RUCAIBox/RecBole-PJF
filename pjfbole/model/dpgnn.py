@@ -59,18 +59,16 @@ class DPGNN(GeneralRecommender):
 
         # bert part
         self.ADD_BERT = config['ADD_BERT']
-        self.BERT_e_size = 0
+        self.BERT_e_size = config['BERT_output_size'] or 1
+        self.bert_lr = nn.Linear(config['BERT_embedding_size'], self.BERT_e_size)
         if self.ADD_BERT:
-            self.BERT_e_size = config['BERT_output_size']
-            self.bert_lr = nn.Linear(config['BERT_embedding_size'], self.BERT_e_size)
-
-            self.bert_user = dataset.bert_user
-            self.bert_item = dataset.bert_item
+            self.bert_user = dataset.bert_user.to(config['device'])
+            self.bert_item = dataset.bert_item.to(config['device'])
 
         # generate intermediate data
         self.edge_index, self.edge_weight = self.get_norm_adj_mat()
-        self.edge_index = self.edge_index
-        self.edge_weight = self.edge_weight
+        self.edge_index = self.edge_index.to(config['device'])
+        self.edge_weight = self.edge_weight.to(config['device'])
 
         self.apply(self._init_weights)
 
