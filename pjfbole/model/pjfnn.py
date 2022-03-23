@@ -48,8 +48,8 @@ class PJFNN(GeneralRecommender):
 
     def __init__(self, config, dataset):
         super(PJFNN, self).__init__(config, dataset)
-        self.USER_SENTS = config['USER_SENTS_FIELD']
-        self.ITEM_SENTS = config['ITEM_SENTS_FIELD']
+        self.USER_SENTS = config['USER_DOC_FIELD']
+        self.ITEM_SENTS = config['ITEM_DOC_FIELD']
         self.neg_prefix = config['NEG_PREFIX']
         # load parameters info
         self.embedding_size = config['embedding_size']
