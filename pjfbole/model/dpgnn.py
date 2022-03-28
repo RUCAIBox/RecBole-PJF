@@ -33,10 +33,10 @@ class DPGNN(GeneralRecommender):
         # load dataset info
         self.interaction_matrix = dataset.inter_matrix(form='coo').astype(np.float32)
         # -==============================
-        self.user_add_matrix = dataset.inter_matrix(form='coo').astype(np.float32)
-        self.job_add_matrix = dataset.inter_matrix(form='coo').astype(np.float32)
-        # self.user_add_matrix = pool.user_add_matrix.astype(np.float32)
-        # self.job_add_matrix = pool.job_add_matrix.astype(np.float32)
+        # self.user_add_matrix = dataset.inter_matrix(form='coo').astype(np.float32)
+        # self.job_add_matrix = dataset.inter_matrix(form='coo').astype(np.float32)
+        self.user_add_matrix = dataset.user_single_inter_matrix(form='coo').astype(np.float32)
+        self.job_add_matrix = dataset.item_single_inter_matrix(form='coo').astype(np.float32)
         # -==============================
 
         # load parameters info 

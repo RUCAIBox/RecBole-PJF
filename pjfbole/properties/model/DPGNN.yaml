@@ -1,6 +1,6 @@
 # Model
 embedding_size: 128
-n_layers: 0
+n_layers: 2
 reg_weight: 1e-05
 mutual_weight: 0.05
 temperature: 0.2
