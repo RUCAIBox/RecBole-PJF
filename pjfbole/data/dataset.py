@@ -47,72 +47,49 @@ class PJFDataset(Dataset):
         self._doc_fillna()
 
         if self.config['ADD_BERT']:
-            self.bert_user = torch.FloatTensor([])
-            self.uid2vec = dict()
-            for j in tqdm(self.user_doc[self.udoc_field + '_vec']):
-                self.bert_user = torch.cat([self.bert_user, j], dim=0)
+            self._collect_text_vec()
 
-            self.bert_item = torch.FloatTensor([])
-            self.iid2vec = dict()
-            for j in tqdm(self.item_doc[self.idoc_field + '_vec']):
-                self.bert_item = torch.cat([self.bert_item, j], dim=0)
+    def _collect_text_vec(self):
+        self.bert_user = torch.FloatTensor([])
+        self.uid2vec = dict()
+        for j in tqdm(self.user_doc[self.udoc_field + '_vec']):
+            self.bert_user = torch.cat([self.bert_user, j], dim=0)
 
-        # self.bert_user
-        # self.bert_item
-        # self.iid2vec = dict()
-        # for i, j in zip(self.item_doc[self.iid_field], self.item_doc[self.idoc_field + '_vec']):
-        #     self.iid2vec[i] = j
+        self.bert_item = torch.FloatTensor([])
+        self.iid2vec = dict()
+        for j in tqdm(self.item_doc[self.idoc_field + '_vec']):
+            self.bert_item = torch.cat([self.bert_item, j], dim=0)
 
     def _doc_fillna(self):
-        def fill_docs_nan(value):
-            if isinstance(value, np.ndarray):
+        def fill_nan(value, fill_size):
+            if isinstance(value, (np.ndarray, torch.Tensor)):
                 return value
             else:
-                return np.zeros([self.config['max_sent_num'], self.config['max_sent_len']])
+                return torch.zeros(fill_size)
 
-        def fill_longdoc_nan(value):
-            if isinstance(value, np.ndarray):
-                return value
-            else:
-                return np.zeros([1])
+        ufield_list = [self.udoc_field, 'long_' + self.udoc_field, self.udoc_field + '_vec']
+        ifield_list = [self.idoc_field, 'long_' + self.idoc_field, self.idoc_field + '_vec']
+        doc_nan_size = [self.config['max_sent_num'], self.config['max_sent_len']]
+        longdoc_nan_size = [1]
+        vec_nan_size = [1, 768]
+        nan_size_list = [doc_nan_size, longdoc_nan_size, vec_nan_size]
 
-        def fill_vec_nan(value):
-            if isinstance(value, torch.Tensor):
-                return value
-            else:
-                return torch.zeros([1, 768])
-
-        if self.user_doc is not None:
+        if self.user_doc is not None and self.item_doc is not None:
             new_udoc_df = pd.DataFrame({self.uid_field: np.arange(self.user_num)})
             self.user_doc = pd.merge(new_udoc_df, self.user_doc, on=self.uid_field, how='left')
-            self.user_doc[self.udoc_field].fillna(value=0, inplace=True)
-            self.user_doc[self.udoc_field] = \
-                self.user_doc[self.udoc_field].apply(fill_docs_nan)
 
-            self.user_doc['long_' + self.udoc_field].fillna(value=0, inplace=True)
-            self.user_doc['long_' + self.udoc_field] = \
-                self.user_doc['long_' + self.udoc_field].apply(fill_vec_nan)
+            for field, nan_size in zip(ufield_list, nan_size_list):
+                if field in self.user_doc.columns:
+                    self.user_doc[field].fillna(value=0, inplace=True)
+                    self.user_doc[field] = self.user_doc[field].apply(fill_nan, fill_size=nan_size)
 
-            if self.config['ADD_BERT']:
-                self.user_doc[self.udoc_field + '_vec'].fillna(value=0, inplace=True)
-                self.user_doc[self.udoc_field + '_vec'] = \
-                    self.user_doc[self.udoc_field + '_vec'].apply(fill_vec_nan)
-
-        if self.item_doc is not None:
             new_idoc_df = pd.DataFrame({self.iid_field: np.arange(self.item_num)})
             self.item_doc = pd.merge(new_idoc_df, self.item_doc, on=self.iid_field, how='left')
-            self.item_doc[self.idoc_field].fillna(value=0, inplace=True)
-            self.item_doc[self.idoc_field] = \
-                self.item_doc[self.idoc_field].apply(fill_docs_nan)
 
-            self.item_doc['long_' + self.idoc_field].fillna(value=0, inplace=True)
-            self.item_doc['long_' + self.idoc_field] = \
-                self.item_doc['long_' + self.idoc_field].apply(fill_longdoc_nan)
-
-            if self.config['ADD_BERT']:
-                self.item_doc[self.idoc_field + '_vec'].fillna(value=0, inplace=True)
-                self.item_doc[self.idoc_field + '_vec'] = \
-                    self.item_doc[self.idoc_field + '_vec'].apply(fill_vec_nan)
+            for field, nan_size in zip(ifield_list, nan_size_list):
+                if field in self.item_doc.columns:
+                    self.item_doc[field].fillna(value=0, inplace=True)
+                    self.item_doc[field] = self.item_doc[field].apply(fill_nan, fill_size=nan_size)
 
     def _change_doc_format(self):
         self.user_doc = self._doc_dataframe_to_interaction(self.user_doc)
