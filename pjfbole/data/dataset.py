@@ -29,6 +29,7 @@ class PJFDataset(Dataset):
             '[WD_MISS]': 1
         }
         self.id2wd = ['[WD_PAD]', '[WD_MISS]']
+
         super().__init__(config)
 
     def change_direction(self):
@@ -46,71 +47,54 @@ class PJFDataset(Dataset):
         super(PJFDataset, self)._data_processing()
         self._doc_fillna()
 
+        if self.config['multi_direction']:
+            self.direct_field = self.config['DIRECT_FIELD']
+            self.geek_direct = self.field2token_id[self.direct_field]['0']
+
         if self.config['ADD_BERT']:
-            self.bert_user = torch.FloatTensor([])
-            self.uid2vec = dict()
-            for j in tqdm(self.user_doc[self.udoc_field + '_vec']):
-                self.bert_user = torch.cat([self.bert_user, j], dim=0)
+            self._collect_text_vec()
 
-            self.bert_item = torch.FloatTensor([])
-            self.iid2vec = dict()
-            for j in tqdm(self.item_doc[self.idoc_field + '_vec']):
-                self.bert_item = torch.cat([self.bert_item, j], dim=0)
+    def _collect_text_vec(self):
+        self.bert_user = torch.FloatTensor([])
+        self.uid2vec = dict()
+        for j in tqdm(self.user_doc[self.udoc_field + '_vec']):
+            self.bert_user = torch.cat([self.bert_user, j], dim=0)
 
-        # self.iid2vec = dict()
-        # for i, j in zip(self.item_doc[self.iid_field], self.item_doc[self.idoc_field + '_vec']):
-        #     self.iid2vec[i] = j
+        self.bert_item = torch.FloatTensor([])
+        self.iid2vec = dict()
+        for j in tqdm(self.item_doc[self.idoc_field + '_vec']):
+            self.bert_item = torch.cat([self.bert_item, j], dim=0)
 
     def _doc_fillna(self):
-        def fill_docs_nan(value):
-            if isinstance(value, np.ndarray):
+        def fill_nan(value, fill_size):
+            if isinstance(value, (np.ndarray, torch.Tensor)):
                 return value
             else:
-                return np.zeros([self.config['max_sent_num'], self.config['max_sent_len']])
+                return torch.zeros(fill_size)
 
-        def fill_longdoc_nan(value):
-            if isinstance(value, np.ndarray):
-                return value
-            else:
-                return np.zeros([1])
+        ufield_list = [self.udoc_field, 'long_' + self.udoc_field, self.udoc_field + '_vec']
+        ifield_list = [self.idoc_field, 'long_' + self.idoc_field, self.idoc_field + '_vec']
+        doc_nan_size = [self.config['max_sent_num'], self.config['max_sent_len']]
+        longdoc_nan_size = [1]
+        vec_nan_size = [1, 768]
+        nan_size_list = [doc_nan_size, longdoc_nan_size, vec_nan_size]
 
-        def fill_vec_nan(value):
-            if isinstance(value, torch.Tensor):
-                return value
-            else:
-                return torch.zeros([1, 768])
-
-        if self.user_doc is not None:
+        if self.user_doc is not None and self.item_doc is not None:
             new_udoc_df = pd.DataFrame({self.uid_field: np.arange(self.user_num)})
             self.user_doc = pd.merge(new_udoc_df, self.user_doc, on=self.uid_field, how='left')
-            self.user_doc[self.udoc_field].fillna(value=0, inplace=True)
-            self.user_doc[self.udoc_field] = \
-                self.user_doc[self.udoc_field].apply(fill_docs_nan)
 
-            self.user_doc['long_' + self.udoc_field].fillna(value=0, inplace=True)
-            self.user_doc['long_' + self.udoc_field] = \
-                self.user_doc['long_' + self.udoc_field].apply(fill_vec_nan)
+            for field, nan_size in zip(ufield_list, nan_size_list):
+                if field in self.user_doc.columns:
+                    self.user_doc[field].fillna(value=0, inplace=True)
+                    self.user_doc[field] = self.user_doc[field].apply(fill_nan, fill_size=nan_size)
 
-            if self.config['ADD_BERT']:
-                self.user_doc[self.udoc_field + '_vec'].fillna(value=0, inplace=True)
-                self.user_doc[self.udoc_field + '_vec'] = \
-                    self.user_doc[self.udoc_field + '_vec'].apply(fill_vec_nan)
-
-        if self.item_doc is not None:
             new_idoc_df = pd.DataFrame({self.iid_field: np.arange(self.item_num)})
             self.item_doc = pd.merge(new_idoc_df, self.item_doc, on=self.iid_field, how='left')
-            self.item_doc[self.idoc_field].fillna(value=0, inplace=True)
-            self.item_doc[self.idoc_field] = \
-                self.item_doc[self.idoc_field].apply(fill_docs_nan)
 
-            self.item_doc['long_' + self.idoc_field].fillna(value=0, inplace=True)
-            self.item_doc['long_' + self.idoc_field] = \
-                self.item_doc['long_' + self.idoc_field].apply(fill_longdoc_nan)
-
-            if self.config['ADD_BERT']:
-                self.item_doc[self.idoc_field + '_vec'].fillna(value=0, inplace=True)
-                self.item_doc[self.idoc_field + '_vec'] = \
-                    self.item_doc[self.idoc_field + '_vec'].apply(fill_vec_nan)
+            for field, nan_size in zip(ifield_list, nan_size_list):
+                if field in self.item_doc.columns:
+                    self.item_doc[field].fillna(value=0, inplace=True)
+                    self.item_doc[field] = self.item_doc[field].apply(fill_nan, fill_size=nan_size)
 
     def _change_doc_format(self):
         self.user_doc = self._doc_dataframe_to_interaction(self.user_doc)
@@ -126,16 +110,14 @@ class PJFDataset(Dataset):
         datasets = super(PJFDataset, self).build()
 
         if self.config['multi_direction']:
-            direct_field = self.config['DIRECT_FIELD']
-            geek_direct = datasets[0].field2token_id[direct_field]['0']
-            valid_g = self.copy(datasets[1].inter_feat[datasets[1].inter_feat[direct_field] == geek_direct])
+            valid_g = self.copy(datasets[1].inter_feat[datasets[1].inter_feat[self.direct_field] == self.geek_direct])
 
-            valid_j = self.copy(datasets[1].inter_feat[datasets[1].inter_feat[direct_field] != geek_direct])
+            valid_j = self.copy(datasets[1].inter_feat[datasets[1].inter_feat[self.direct_field] != self.geek_direct])
             valid_j.change_direction()
 
-            test_g = self.copy(datasets[2].inter_feat[datasets[2].inter_feat[direct_field] == geek_direct])
+            test_g = self.copy(datasets[2].inter_feat[datasets[2].inter_feat[self.direct_field] == self.geek_direct])
 
-            test_j = self.copy(datasets[2].inter_feat[datasets[2].inter_feat[direct_field] != geek_direct])
+            test_j = self.copy(datasets[2].inter_feat[datasets[2].inter_feat[self.direct_field] != self.geek_direct])
             test_j.change_direction()
             return [datasets[0], valid_g, valid_j, test_g, test_j]
         return datasets
@@ -219,7 +201,7 @@ class PJFDataset(Dataset):
                 for wd in line:
                     s += wd + ' '
             input = self.tokenizer(s, return_tensors="pt")
-            output = self.model(**input)[0][:, 0]
+            output = self.model(**input)[0][:, 0].detach()
             return output
 
         if self.config['ADD_BERT']:
@@ -245,6 +227,7 @@ class PJFDataset(Dataset):
             feat.columns = [field, doc_field, 'long_' + doc_field]
 
         if self.config['ADD_BERT']:
+            feat = feat[feat[field].isin(vec[field])]
             feat = pd.merge(feat, vec, on=field)
             feat.columns = [field, doc_field, 'long_' + doc_field, doc_field + '_vec']
 
@@ -293,3 +276,15 @@ class PJFDataset(Dataset):
             else:
                 new_data[k] = value
         return Interaction(new_data)
+
+    def user_single_inter_matrix(self, form='coo', value_field=None):
+        if not self.uid_field or not self.iid_field:
+            raise ValueError('dataset does not exist uid/iid, thus can not converted to sparse matrix.')
+        user_single_inter = self.inter_feat[self.inter_feat[self.direct_field] == self.geek_direct]
+        return self._create_sparse_matrix(user_single_inter, self.uid_field, self.iid_field, form, value_field)
+
+    def item_single_inter_matrix(self, form='coo', value_field=None):
+        if not self.uid_field or not self.iid_field:
+            raise ValueError('dataset does not exist uid/iid, thus can not converted to sparse matrix.')
+        item_single_inter = self.inter_feat[self.inter_feat[self.direct_field] != self.geek_direct]
+        return self._create_sparse_matrix(item_single_inter, self.uid_field, self.iid_field, form, value_field)
