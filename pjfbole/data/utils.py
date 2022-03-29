@@ -15,10 +15,11 @@ from logging import getLogger
 from recbole.sampler import Sampler, RepeatableSampler
 from recbole.utils.argument_list import dataset_arguments
 from recbole.utils import set_color
-from recbole.data.utils import get_dataloader
+# from recbole.data.utils import get_dataloader
 from recbole.data.utils import data_preparation as recbole_data_preparation
+from recbole.data.dataloader import *
 
-from pjfbole.data.dataloader import *
+from pjfbole.data.dataloader import DPGNNTrainDataloader
 
 
 def create_dataset(config):
@@ -159,3 +160,29 @@ def create_samplers_for_multi_direction(config, dataset, built_datasets):
         built_datasets[0].change_direction()
 
     return train_sampler, valid_g_sampler, valid_j_sampler, test_g_sampler, test_j_sampler
+
+
+def get_dataloader(config, phase):
+    """Return a dataloader class according to :attr:`config` and :attr:`phase`.
+
+    Args:
+        config (Config): An instance object of Config, used to record parameter information.
+        phase (str): The stage of dataloader. It can only take two values: 'train' or 'evaluation'.
+
+    Returns:
+        type: The dataloader class that meets the requirements in :attr:`config` and :attr:`phase`.
+    """
+    model_type = config['MODEL_TYPE']
+    if phase == 'train':
+        if config['model'] == 'DPGNN':
+            return DPGNNTrainDataloader
+        if model_type != ModelType.KNOWLEDGE:
+            return TrainDataLoader
+        else:
+            return KnowledgeBasedDataLoader
+    else:
+        eval_strategy = config['eval_neg_sample_args']['strategy']
+        if eval_strategy in {'none', 'by'}:
+            return NegSampleEvalDataLoader
+        elif eval_strategy == 'full':
+            return FullSortEvalDataLoader

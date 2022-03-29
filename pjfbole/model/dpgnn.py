@@ -26,6 +26,8 @@ class DPGNN(GeneralRecommender):
         super(DPGNN, self).__init__(config, dataset)
         self.USER_SENTS = config['USER_DOC_FIELD']
         self.ITEM_SENTS = config['ITEM_DOC_FIELD']
+        self.NEG_USER_ID = config['NEG_PREFIX'] + self.USER_ID
+        self.NEG_ITEM_ID = config['NEG_PREFIX'] + self.ITEM_ID
         self.neg_prefix = config['NEG_PREFIX']
         # load parameters info
         self.embedding_size = config['embedding_size']
@@ -198,50 +200,19 @@ class DPGNN(GeneralRecommender):
                                                              [self.n_users, self.n_items, self.n_users, self.n_items])
         return user_e_a, item_e_p, user_e_p, item_e_a
 
-    def calculate_loss(self, interaction):
-        user = interaction[self.USER_ID]
-        item = interaction[self.ITEM_ID]
-        neg_item = interaction[self.NEG_ITEM_ID]
-        user_e_a, item_e_p, user_e_p, item_e_a = self.forward()
-        # user active
-        u_e_a = user_e_a[user]
-        # item passive
-        i_e_p = item_e_p[item]
-        n_i_e_p = item_e_p[neg_item]
-
-        # user passive
-        u_e_p = user_e_p[user]
-        # item active
-        i_e_a = item_e_a[item]
-        n_i_e_a = item_e_a[neg_item]
-
-        r_pos = torch.mul(u_e_a, i_e_p).sum(dim=1)
-        s_pos = torch.mul(u_e_p, i_e_a).sum(dim=1)
-
-        r_neg1 = torch.mul(u_e_a, n_i_e_p).sum(dim=1)
-        s_neg1 = torch.mul(u_e_p, n_i_e_a).sum(dim=1)
-
-        mf_loss_u = self.mf_loss(r_pos + s_pos, r_neg1 + s_neg1)
-        return mf_loss_u
-
     # def calculate_loss(self, interaction):
     #     user = interaction[self.USER_ID]
     #     item = interaction[self.ITEM_ID]
-    #     neg_user = interaction[self.NEG_USER_ID]
     #     neg_item = interaction[self.NEG_ITEM_ID]
-    #
     #     user_e_a, item_e_p, user_e_p, item_e_a = self.forward()
-    #
     #     # user active
     #     u_e_a = user_e_a[user]
-    #     n_u_e_a = user_e_a[neg_user]
-    #     # item negative
+    #     # item passive
     #     i_e_p = item_e_p[item]
     #     n_i_e_p = item_e_p[neg_item]
     #
-    #     # user negative
+    #     # user passive
     #     u_e_p = user_e_p[user]
-    #     n_u_e_p = user_e_p[neg_user]
     #     # item active
     #     i_e_a = item_e_a[item]
     #     n_i_e_a = item_e_a[neg_item]
@@ -252,31 +223,9 @@ class DPGNN(GeneralRecommender):
     #     r_neg1 = torch.mul(u_e_a, n_i_e_p).sum(dim=1)
     #     s_neg1 = torch.mul(u_e_p, n_i_e_a).sum(dim=1)
     #
-    #     r_neg2 = torch.mul(n_u_e_a, i_e_p).sum(dim=1)
-    #     s_neg2 = torch.mul(n_u_e_p, i_e_a).sum(dim=1)
+    #     mf_loss_u = self.mf_loss(r_pos + s_pos, r_neg1 + s_neg1)
     #
-    #     # calculate BPR Loss
-    #     # pos_scores = I_geek + I_job
-    #     # neg_scores_u = n_I_geek_1 + n_I_job_1
-    #     # neg_scores_i = n_I_geek_2 + n_I_job_2
-    #
-    #     mf_loss_u = self.mf_loss(2 * r_pos + 2 * s_pos, r_neg1 + s_neg1 + r_neg2 + s_neg2)
-    #
-    #     # calculate Emb Loss
-    #     u_ego_embeddings_a = self.user_embedding_a(user)
-    #     u_ego_embeddings_p = self.user_embedding_p(user)
-    #     pos_ego_embeddings_a = self.item_embedding_a(item)
-    #     pos_ego_embeddings_p = self.item_embedding_p(item)
-    #     neg_ego_embeddings_a = self.item_embedding_a(neg_item)
-    #     neg_ego_embeddings_p = self.item_embedding_p(neg_item)
-    #     neg_u_ego_embeddings_a = self.user_embedding_a(neg_user)
-    #     neg_u_ego_embeddings_p = self.user_embedding_p(neg_user)
-    #
-    #     reg_loss = self.reg_loss(u_ego_embeddings_a, u_ego_embeddings_p,
-    #                              pos_ego_embeddings_a, pos_ego_embeddings_p,
-    #                              neg_ego_embeddings_a, neg_ego_embeddings_p,
-    #                              neg_u_ego_embeddings_a, neg_u_ego_embeddings_p)
-    #
+    #     reg_loss = 0
     #     loss = mf_loss_u + self.reg_weight * reg_loss
     #
     #     logits_user, labels = self.info_nce_loss(user, is_user=True)
@@ -286,6 +235,69 @@ class DPGNN(GeneralRecommender):
     #     loss += self.mul_weight * self.mutual_loss(logits_job, labels)
     #
     #     return loss
+
+    def calculate_loss(self, interaction):
+        user = interaction[self.USER_ID]
+        item = interaction[self.ITEM_ID]
+        neg_user = interaction[self.NEG_USER_ID]
+        neg_item = interaction[self.NEG_ITEM_ID]
+
+        user_e_a, item_e_p, user_e_p, item_e_a = self.forward()
+
+        # user active
+        u_e_a = user_e_a[user]
+        n_u_e_a = user_e_a[neg_user]
+        # item negative
+        i_e_p = item_e_p[item]
+        n_i_e_p = item_e_p[neg_item]
+
+        # user negative
+        u_e_p = user_e_p[user]
+        n_u_e_p = user_e_p[neg_user]
+        # item active
+        i_e_a = item_e_a[item]
+        n_i_e_a = item_e_a[neg_item]
+
+        r_pos = torch.mul(u_e_a, i_e_p).sum(dim=1)
+        s_pos = torch.mul(u_e_p, i_e_a).sum(dim=1)
+
+        r_neg1 = torch.mul(u_e_a, n_i_e_p).sum(dim=1)
+        s_neg1 = torch.mul(u_e_p, n_i_e_a).sum(dim=1)
+
+        r_neg2 = torch.mul(n_u_e_a, i_e_p).sum(dim=1)
+        s_neg2 = torch.mul(n_u_e_p, i_e_a).sum(dim=1)
+
+        # calculate BPR Loss
+        # pos_scores = I_geek + I_job
+        # neg_scores_u = n_I_geek_1 + n_I_job_1
+        # neg_scores_i = n_I_geek_2 + n_I_job_2
+
+        mf_loss_u = self.mf_loss(2 * r_pos + 2 * s_pos, r_neg1 + s_neg1 + r_neg2 + s_neg2)
+
+        # calculate Emb Loss
+        u_ego_embeddings_a = self.user_embedding_a(user)
+        u_ego_embeddings_p = self.user_embedding_p(user)
+        pos_ego_embeddings_a = self.item_embedding_a(item)
+        pos_ego_embeddings_p = self.item_embedding_p(item)
+        neg_ego_embeddings_a = self.item_embedding_a(neg_item)
+        neg_ego_embeddings_p = self.item_embedding_p(neg_item)
+        neg_u_ego_embeddings_a = self.user_embedding_a(neg_user)
+        neg_u_ego_embeddings_p = self.user_embedding_p(neg_user)
+
+        reg_loss = self.reg_loss(u_ego_embeddings_a, u_ego_embeddings_p,
+                                 pos_ego_embeddings_a, pos_ego_embeddings_p,
+                                 neg_ego_embeddings_a, neg_ego_embeddings_p,
+                                 neg_u_ego_embeddings_a, neg_u_ego_embeddings_p)
+
+        loss = mf_loss_u + self.reg_weight * reg_loss
+
+        logits_user, labels = self.info_nce_loss(user, is_user=True)
+        loss += self.mul_weight * self.mutual_loss(logits_user, labels)
+
+        logits_job, labels = self.info_nce_loss(item, is_user=False)
+        loss += self.mul_weight * self.mutual_loss(logits_job, labels)
+
+        return loss
 
     def predict(self, interaction):
         user = interaction[self.USER_ID]
