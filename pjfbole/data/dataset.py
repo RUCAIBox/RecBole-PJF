@@ -29,7 +29,8 @@ class PJFDataset(Dataset):
             '[WD_MISS]': 1
         }
         self.id2wd = ['[WD_PAD]', '[WD_MISS]']
-
+        self.user_doc = None
+        self.item_doc = None
         super().__init__(config)
 
     def change_direction(self):
@@ -41,16 +42,21 @@ class PJFDataset(Dataset):
 
     def _change_feat_format(self):
         super(PJFDataset, self)._change_feat_format()
-        self._change_doc_format()
+        if self.user_doc is not None:
+            self._change_doc_format()
 
     def _data_processing(self):
         super(PJFDataset, self)._data_processing()
-        self._doc_fillna()
+        if self.user_doc is not None:
+            self._doc_fillna()
 
         if self.config['multi_direction']:
             self.direct_field = self.config['DIRECT_FIELD']
             self.geek_direct = self.field2token_id[self.direct_field]['0']
+            self.user_single_inter = self.inter_feat[self.inter_feat[self.direct_field] == self.geek_direct]
+            self.item_single_inter = self.inter_feat[self.inter_feat[self.direct_field] != self.geek_direct]
 
+        self.inter_feat = self.inter_feat[self.inter_feat[self.label_field] == 1]
         if self.config['ADD_BERT']:
             self._collect_text_vec()
 
@@ -110,14 +116,18 @@ class PJFDataset(Dataset):
         datasets = super(PJFDataset, self).build()
 
         if self.config['multi_direction']:
-            valid_g = self.copy(datasets[1].inter_feat[datasets[1].inter_feat[self.direct_field] == self.geek_direct])
+            # valid_g = self.copy(datasets[1].inter_feat[datasets[1].inter_feat[self.direct_field] == self.geek_direct])
+            valid_g = self.copy(datasets[1].inter_feat)
 
-            valid_j = self.copy(datasets[1].inter_feat[datasets[1].inter_feat[self.direct_field] != self.geek_direct])
+            # valid_j = self.copy(datasets[1].inter_feat[datasets[1].inter_feat[self.direct_field] != self.geek_direct])
+            valid_j = self.copy(datasets[1].inter_feat)
             valid_j.change_direction()
 
-            test_g = self.copy(datasets[2].inter_feat[datasets[2].inter_feat[self.direct_field] == self.geek_direct])
+            # test_g = self.copy(datasets[2].inter_feat[datasets[2].inter_feat[self.direct_field] == self.geek_direct])
+            test_g = self.copy(datasets[2].inter_feat)
 
-            test_j = self.copy(datasets[2].inter_feat[datasets[2].inter_feat[self.direct_field] != self.geek_direct])
+            # test_j = self.copy(datasets[2].inter_feat[datasets[2].inter_feat[self.direct_field] != self.geek_direct])
+            test_j = self.copy(datasets[2].inter_feat)
             test_j.change_direction()
             return [datasets[0], valid_g, valid_j, test_g, test_j]
         return datasets
@@ -139,9 +149,10 @@ class PJFDataset(Dataset):
             dataset_path (str): path of dataset dir.
         """
         super(PJFDataset, self)._load_data(token, dataset_path)
-        self.user_doc = self._load_user_or_item_doc(token, dataset_path, 'udoc', 'uid_field', 'udoc_field')
-        self.item_doc = self._load_user_or_item_doc(token, dataset_path, 'idoc', 'iid_field', 'idoc_field')
-        self.filter_data_with_no_doc()
+        if 'udoc' in self.config['load_col']:
+            self.user_doc = self._load_user_or_item_doc(token, dataset_path, 'udoc', 'uid_field', 'udoc_field')
+            self.item_doc = self._load_user_or_item_doc(token, dataset_path, 'idoc', 'iid_field', 'idoc_field')
+            self.filter_data_with_no_doc()
 
     def _load_user_or_item_doc(self, token, dataset_path, suf, field_name, doc_field_name):
         """Load user/item doc.
@@ -259,7 +270,6 @@ class PJFDataset(Dataset):
     def field2feats(self, field):
         feats = super(PJFDataset, self).field2feats(field)
         if field == self.uid_field:
-            feats = [self.inter_feat]
             if self.user_doc is not None:
                 feats.append(self.user_doc)
         elif field == self.iid_field:
@@ -280,11 +290,11 @@ class PJFDataset(Dataset):
     def user_single_inter_matrix(self, form='coo', value_field=None):
         if not self.uid_field or not self.iid_field:
             raise ValueError('dataset does not exist uid/iid, thus can not converted to sparse matrix.')
-        user_single_inter = self.inter_feat[self.inter_feat[self.direct_field] == self.geek_direct]
-        return self._create_sparse_matrix(user_single_inter, self.uid_field, self.iid_field, form, value_field)
+        # user_single_inter = self.inter_feat[self.inter_feat[self.direct_field] == self.geek_direct]
+        return self._create_sparse_matrix(self.user_single_inter, self.uid_field, self.iid_field, form, value_field)
 
     def item_single_inter_matrix(self, form='coo', value_field=None):
         if not self.uid_field or not self.iid_field:
             raise ValueError('dataset does not exist uid/iid, thus can not converted to sparse matrix.')
-        item_single_inter = self.inter_feat[self.inter_feat[self.direct_field] != self.geek_direct]
-        return self._create_sparse_matrix(item_single_inter, self.uid_field, self.iid_field, form, value_field)
+        # item_single_inter = self.inter_feat[self.inter_feat[self.direct_field] != self.geek_direct]
+        return self._create_sparse_matrix(self.item_single_inter, self.uid_field, self.iid_field, form, value_field)

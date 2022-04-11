@@ -4,27 +4,28 @@ seq_separator: " "
 
 # Common Features
 USER_ID_FIELD: user_id
-ITEM_ID_FIELD: item_id
-RATING_FIELD: rating
-TIME_FIELD: timestamp
+ITEM_ID_FIELD: job_id
+#RATING_FIELD: rating
+#TIME_FIELD: timestamp
 DIRECT_FIELD: direct
 seq_len: ~
 # Label for Point-wise DataLoader
-LABEL_FIELD: rating
+LABEL_FIELD: label
 threshold:
-    rating: 3
+    label: 0.5
 # NegSample Prefix for Pair-wise DataLoader
 NEG_PREFIX: neg_
 # Text Model Needed
-USER_DOC_FIELD: geek_sents
-ITEM_DOC_FIELD: job_sents
+USER_DOC_FIELD: user_doc
+ITEM_DOC_FIELD: job_doc
 
 # Selectively Loading
 load_col:
-    inter: [user_id, item_id, rating, timestamp, direct]
-    item: [item_id, class]
-    udoc: [user_id, geek_sents]
-    idoc: [item_id, job_sents]
+    inter: [user_id, job_id, direct, label]
+#    user: [user_id, live_city_id]
+#    item: [job_id, city]
+#    udoc: [user_id, user_doc]
+#    idoc: [job_id, job_doc]
 unload_col: ~
 unused_col: ~
 
