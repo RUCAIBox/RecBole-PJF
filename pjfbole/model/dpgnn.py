@@ -69,8 +69,8 @@ class DPGNN(GeneralRecommender):
 
         # generate intermediate data
         self.edge_index, self.edge_weight = self.get_norm_adj_mat()
-        self.edge_index = self.edge_index
-        self.edge_weight = self.edge_weight
+        self.edge_index = self.edge_index.to(config['device'])
+        self.edge_weight = self.edge_weight.to(config['device'])
 
         self.apply(self._init_weights)
 

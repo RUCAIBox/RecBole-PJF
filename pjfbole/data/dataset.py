@@ -57,7 +57,7 @@ class PJFDataset(Dataset):
             self.item_single_inter = self.inter_feat[self.inter_feat[self.direct_field] != self.geek_direct]
 
         self.inter_feat = self.inter_feat[self.inter_feat[self.label_field] == 1]
-        if self.config['ADD_BERT']:
+        if self.config['ADD_BERT'] and self.user_doc is not None:
             self._collect_text_vec()
 
     def _collect_text_vec(self):
@@ -211,33 +211,53 @@ class PJFDataset(Dataset):
             for line in doc_list:
                 for wd in line:
                     s += wd + ' '
+            s = s[:512]
             input = self.tokenizer(s, return_tensors="pt")
             output = self.model(**input)[0][:, 0].detach()
             return output
 
         if self.config['ADD_BERT']:
-            from transformers import AutoTokenizer, AutoModel, logging
-            logging.set_verbosity_warning()
-            MODEL_PATH = self.config['pretrained_bert_model'] or "bert-base-cased"
-            self.tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
-            self.model = AutoModel.from_pretrained(MODEL_PATH)
+            # load bert vector
+            bert_vec_save_path = os.path.join(dataset_path, f'{token}.{field_name[0]}vec')
+            if os.path.isfile(bert_vec_save_path):
+                vec = pd.read_csv(bert_vec_save_path, dtype=object)
+            else:
+                # calculate and get bert vector
+                from transformers import AutoTokenizer, AutoModel, logging
+                logging.set_verbosity_warning()
+                MODEL_PATH = self.config['pretrained_bert_model'] or "bert-base-cased"
+                self.tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
+                self.model = AutoModel.from_pretrained(MODEL_PATH)
 
-            tqdm.pandas(desc=f"bert encoding for {suf}")
-            feat[doc_field + '_vec'] = feat[doc_field]
-            vec = feat.groupby(field).progress_apply(
-                lambda x: bert_encoding([i for i in x[doc_field + '_vec']])).to_frame()
-            vec.reset_index(inplace=True)
+                tqdm.pandas(desc=f"bert encoding for {suf}")
+                feat[doc_field + '_vec'] = feat[doc_field]
+                vec = feat.groupby(field).progress_apply(
+                    lambda x: bert_encoding([i for i in x[doc_field + '_vec']])).to_frame()
+                vec.reset_index(inplace=True)
+                # save bert vector
+                if self.config['save_bert_vec']:
+                    vec.to_csv(bert_vec_save_path, index=False)
+
 
         if feat is not None:
             feat[doc_field] = feat[doc_field].apply(word_map)
+
+            # get long doc(DataFrame): user_id/item_id \t long_doc
             long_doc = feat.groupby(field).apply(lambda x: get_long_doc([i for i in x[doc_field]])).to_frame()
             long_doc.reset_index(inplace=True)
+
+            # get docs(DataFrame): user_id/item_id \t np.array([max_sent_num, max_sent_len])
             docs = feat.groupby(field).apply(lambda x: get_docs([i for i in x[doc_field]])).to_frame()
             docs.reset_index(inplace=True)
+
+            # merge long_doc and docs
             feat = pd.merge(docs, long_doc, on=field)
+
+            # set head: user_id/item_id \t user_doc/item_doc \t long_user_doc/long_item_doc
             feat.columns = [field, doc_field, 'long_' + doc_field]
 
         if self.config['ADD_BERT']:
+            # merge bert vec to feat
             feat = feat[feat[field].isin(vec[field])]
             feat = pd.merge(feat, vec, on=field)
             feat.columns = [field, doc_field, 'long_' + doc_field, doc_field + '_vec']

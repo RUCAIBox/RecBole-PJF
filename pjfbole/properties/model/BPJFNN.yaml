@@ -1,5 +1,5 @@
 # Data
-max_longsent_len: 256
+max_longsent_len: 512
 
 # Model
 embedding_size: 128

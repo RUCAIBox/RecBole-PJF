@@ -24,8 +24,8 @@ load_col:
     inter: [user_id, job_id, direct, label]
 #    user: [user_id, live_city_id]
 #    item: [job_id, city]
-#    udoc: [user_id, user_doc]
-#    idoc: [job_id, job_doc]
+    udoc: [user_id, user_doc]
+    idoc: [job_id, job_doc]
 unload_col: ~
 unused_col: ~
 
