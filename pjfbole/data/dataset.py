@@ -61,19 +61,21 @@ class PJFDataset(Dataset):
             self._collect_text_vec()
 
     def _collect_text_vec(self):
-        self.bert_user = torch.FloatTensor([])
-        self.uid2vec = dict()
-        for j in tqdm(self.user_doc[self.udoc_field + '_vec']):
-            self.bert_user = torch.cat([self.bert_user, j], dim=0)
-
-        self.bert_item = torch.FloatTensor([])
-        self.iid2vec = dict()
-        for j in tqdm(self.item_doc[self.idoc_field + '_vec']):
-            self.bert_item = torch.cat([self.bert_item, j], dim=0)
+        # self.bert_user = torch.FloatTensor([])
+        # self.uid2vec = dict()
+        # for j in tqdm(self.user_doc[self.udoc_field + '_vec']):
+        #     self.bert_user = torch.cat([self.bert_user.squeeze(), j], dim=0)
+        #
+        # self.bert_item = torch.FloatTensor([])
+        # self.iid2vec = dict()
+        # for j in tqdm(self.item_doc[self.idoc_field + '_vec']):
+        #     self.bert_item = torch.cat([self.bert_item.squeeze(), j], dim=0)
+        self.bert_user = torch.stack(self.user_doc[self.udoc_field + '_vec'].values.tolist(), dim=1).transpose(0, 1)
+        self.bert_item = torch.stack(self.item_doc[self.idoc_field + '_vec'].values.tolist(), dim=1).transpose(0, 1)
 
     def _doc_fillna(self):
         def fill_nan(value, fill_size):
-            if isinstance(value, (np.ndarray, torch.Tensor)):
+            if isinstance(value, (list, np.ndarray, torch.Tensor)):
                 return value
             else:
                 return torch.zeros(fill_size)
@@ -82,7 +84,7 @@ class PJFDataset(Dataset):
         ifield_list = [self.idoc_field, 'long_' + self.idoc_field, self.idoc_field + '_vec']
         doc_nan_size = [self.config['max_sent_num'], self.config['max_sent_len']]
         longdoc_nan_size = [1]
-        vec_nan_size = [1, 768]
+        vec_nan_size = [768]
         nan_size_list = [doc_nan_size, longdoc_nan_size, vec_nan_size]
 
         if self.user_doc is not None and self.item_doc is not None:
@@ -216,11 +218,18 @@ class PJFDataset(Dataset):
             output = self.model(**input)[0][:, 0].detach()
             return output
 
+        def deal_str(vec_string):
+            vec_string = vec_string[10: -3]
+            s_list = vec_string.replace(' ', '').replace('\n', '').split(',')
+            s_res = list(map(lambda x: float(x), s_list))
+            return torch.Tensor(s_res)
+
         if self.config['ADD_BERT']:
             # load bert vector
             bert_vec_save_path = os.path.join(dataset_path, f'{token}.{field_name[0]}vec')
             if os.path.isfile(bert_vec_save_path):
                 vec = pd.read_csv(bert_vec_save_path, dtype=object)
+                vec['0'] = vec['0'].apply(deal_str)
             else:
                 # calculate and get bert vector
                 from transformers import AutoTokenizer, AutoModel, logging
@@ -234,12 +243,21 @@ class PJFDataset(Dataset):
                 vec = feat.groupby(field).progress_apply(
                     lambda x: bert_encoding([i for i in x[doc_field + '_vec']])).to_frame()
                 vec.reset_index(inplace=True)
+                # vec.columns = [field, doc_field + '_vec']
                 # save bert vector
                 if self.config['save_bert_vec']:
                     vec.to_csv(bert_vec_save_path, index=False)
 
-
-        if feat is not None:
+            # merge bert vec to feat
+            del feat[doc_field]
+            feat.drop_duplicates(inplace=True)
+            feat = feat[feat[field].isin(vec[field])]
+            feat = pd.merge(feat, vec, on=field)
+            feat.columns = [field, doc_field + '_vec']
+        else:
+            # if ADD_BERT, means that the model did not need docs and long_doc
+            # if not ADD_BERT, means that the model need docs or long_doc.
+            # load docs and long_doc
             feat[doc_field] = feat[doc_field].apply(word_map)
 
             # get long doc(DataFrame): user_id/item_id \t long_doc
@@ -255,12 +273,6 @@ class PJFDataset(Dataset):
 
             # set head: user_id/item_id \t user_doc/item_doc \t long_user_doc/long_item_doc
             feat.columns = [field, doc_field, 'long_' + doc_field]
-
-        if self.config['ADD_BERT']:
-            # merge bert vec to feat
-            feat = feat[feat[field].isin(vec[field])]
-            feat = pd.merge(feat, vec, on=field)
-            feat.columns = [field, doc_field, 'long_' + doc_field, doc_field + '_vec']
 
         return feat
 
