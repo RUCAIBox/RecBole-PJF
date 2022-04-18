@@ -45,7 +45,7 @@ class BERT(GeneralRecommender):
     def forward(self, user, item):
         u = self.bert_user(user)
         i = self.bert_item(item)
-        u_i = torch.cat([u, i], dim=2)
+        u_i = torch.cat([u, i], dim=1)
         score = self.predict_layer(u_i)
         return score.squeeze()
 
