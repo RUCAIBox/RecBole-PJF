@@ -1,3 +1,5 @@
 ADD_BERT: True
+save_bert_vec: True
+
 embedding_size: 768
 hidden_size: 128

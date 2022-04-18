@@ -29,7 +29,8 @@ class PJFDataset(Dataset):
             '[WD_MISS]': 1
         }
         self.id2wd = ['[WD_PAD]', '[WD_MISS]']
-
+        self.user_doc = None
+        self.item_doc = None
         super().__init__(config)
 
     def change_direction(self):
@@ -41,33 +42,40 @@ class PJFDataset(Dataset):
 
     def _change_feat_format(self):
         super(PJFDataset, self)._change_feat_format()
-        self._change_doc_format()
+        if self.user_doc is not None:
+            self._change_doc_format()
 
     def _data_processing(self):
         super(PJFDataset, self)._data_processing()
-        self._doc_fillna()
+        if self.user_doc is not None:
+            self._doc_fillna()
 
         if self.config['multi_direction']:
             self.direct_field = self.config['DIRECT_FIELD']
             self.geek_direct = self.field2token_id[self.direct_field]['0']
+            self.user_single_inter = self.inter_feat[self.inter_feat[self.direct_field] == self.geek_direct]
+            self.item_single_inter = self.inter_feat[self.inter_feat[self.direct_field] != self.geek_direct]
 
-        if self.config['ADD_BERT']:
+        self.inter_feat = self.inter_feat[self.inter_feat[self.label_field] == 1]
+        if self.config['ADD_BERT'] and self.user_doc is not None:
             self._collect_text_vec()
 
     def _collect_text_vec(self):
-        self.bert_user = torch.FloatTensor([])
-        self.uid2vec = dict()
-        for j in tqdm(self.user_doc[self.udoc_field + '_vec']):
-            self.bert_user = torch.cat([self.bert_user, j], dim=0)
-
-        self.bert_item = torch.FloatTensor([])
-        self.iid2vec = dict()
-        for j in tqdm(self.item_doc[self.idoc_field + '_vec']):
-            self.bert_item = torch.cat([self.bert_item, j], dim=0)
+        # self.bert_user = torch.FloatTensor([])
+        # self.uid2vec = dict()
+        # for j in tqdm(self.user_doc[self.udoc_field + '_vec']):
+        #     self.bert_user = torch.cat([self.bert_user.squeeze(), j], dim=0)
+        #
+        # self.bert_item = torch.FloatTensor([])
+        # self.iid2vec = dict()
+        # for j in tqdm(self.item_doc[self.idoc_field + '_vec']):
+        #     self.bert_item = torch.cat([self.bert_item.squeeze(), j], dim=0)
+        self.bert_user = torch.stack(self.user_doc[self.udoc_field + '_vec'].values.tolist(), dim=1).transpose(0, 1)
+        self.bert_item = torch.stack(self.item_doc[self.idoc_field + '_vec'].values.tolist(), dim=1).transpose(0, 1)
 
     def _doc_fillna(self):
         def fill_nan(value, fill_size):
-            if isinstance(value, (np.ndarray, torch.Tensor)):
+            if isinstance(value, (list, np.ndarray, torch.Tensor)):
                 return value
             else:
                 return torch.zeros(fill_size)
@@ -76,7 +84,7 @@ class PJFDataset(Dataset):
         ifield_list = [self.idoc_field, 'long_' + self.idoc_field, self.idoc_field + '_vec']
         doc_nan_size = [self.config['max_sent_num'], self.config['max_sent_len']]
         longdoc_nan_size = [1]
-        vec_nan_size = [1, 768]
+        vec_nan_size = [768]
         nan_size_list = [doc_nan_size, longdoc_nan_size, vec_nan_size]
 
         if self.user_doc is not None and self.item_doc is not None:
@@ -110,14 +118,18 @@ class PJFDataset(Dataset):
         datasets = super(PJFDataset, self).build()
 
         if self.config['multi_direction']:
-            valid_g = self.copy(datasets[1].inter_feat[datasets[1].inter_feat[self.direct_field] == self.geek_direct])
+            # valid_g = self.copy(datasets[1].inter_feat[datasets[1].inter_feat[self.direct_field] == self.geek_direct])
+            valid_g = self.copy(datasets[1].inter_feat)
 
-            valid_j = self.copy(datasets[1].inter_feat[datasets[1].inter_feat[self.direct_field] != self.geek_direct])
+            # valid_j = self.copy(datasets[1].inter_feat[datasets[1].inter_feat[self.direct_field] != self.geek_direct])
+            valid_j = self.copy(datasets[1].inter_feat)
             valid_j.change_direction()
 
-            test_g = self.copy(datasets[2].inter_feat[datasets[2].inter_feat[self.direct_field] == self.geek_direct])
+            # test_g = self.copy(datasets[2].inter_feat[datasets[2].inter_feat[self.direct_field] == self.geek_direct])
+            test_g = self.copy(datasets[2].inter_feat)
 
-            test_j = self.copy(datasets[2].inter_feat[datasets[2].inter_feat[self.direct_field] != self.geek_direct])
+            # test_j = self.copy(datasets[2].inter_feat[datasets[2].inter_feat[self.direct_field] != self.geek_direct])
+            test_j = self.copy(datasets[2].inter_feat)
             test_j.change_direction()
             return [datasets[0], valid_g, valid_j, test_g, test_j]
         return datasets
@@ -139,9 +151,10 @@ class PJFDataset(Dataset):
             dataset_path (str): path of dataset dir.
         """
         super(PJFDataset, self)._load_data(token, dataset_path)
-        self.user_doc = self._load_user_or_item_doc(token, dataset_path, 'udoc', 'uid_field', 'udoc_field')
-        self.item_doc = self._load_user_or_item_doc(token, dataset_path, 'idoc', 'iid_field', 'idoc_field')
-        self.filter_data_with_no_doc()
+        if 'udoc' in self.config['load_col']:
+            self.user_doc = self._load_user_or_item_doc(token, dataset_path, 'udoc', 'uid_field', 'udoc_field')
+            self.item_doc = self._load_user_or_item_doc(token, dataset_path, 'idoc', 'iid_field', 'idoc_field')
+            self.filter_data_with_no_doc()
 
     def _load_user_or_item_doc(self, token, dataset_path, suf, field_name, doc_field_name):
         """Load user/item doc.
@@ -200,36 +213,66 @@ class PJFDataset(Dataset):
             for line in doc_list:
                 for wd in line:
                     s += wd + ' '
+            s = s[:512]
             input = self.tokenizer(s, return_tensors="pt")
             output = self.model(**input)[0][:, 0].detach()
             return output
 
-        if self.config['ADD_BERT']:
-            from transformers import AutoTokenizer, AutoModel, logging
-            logging.set_verbosity_warning()
-            MODEL_PATH = self.config['pretrained_bert_model'] or "bert-base-cased"
-            self.tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
-            self.model = AutoModel.from_pretrained(MODEL_PATH)
-
-            tqdm.pandas(desc=f"bert encoding for {suf}")
-            feat[doc_field + '_vec'] = feat[doc_field]
-            vec = feat.groupby(field).progress_apply(
-                lambda x: bert_encoding([i for i in x[doc_field + '_vec']])).to_frame()
-            vec.reset_index(inplace=True)
-
-        if feat is not None:
-            feat[doc_field] = feat[doc_field].apply(word_map)
-            long_doc = feat.groupby(field).apply(lambda x: get_long_doc([i for i in x[doc_field]])).to_frame()
-            long_doc.reset_index(inplace=True)
-            docs = feat.groupby(field).apply(lambda x: get_docs([i for i in x[doc_field]])).to_frame()
-            docs.reset_index(inplace=True)
-            feat = pd.merge(docs, long_doc, on=field)
-            feat.columns = [field, doc_field, 'long_' + doc_field]
+        def deal_str(vec_string):
+            vec_string = vec_string[10: -3]
+            s_list = vec_string.replace(' ', '').replace('\n', '').split(',')
+            s_res = list(map(lambda x: float(x), s_list))
+            return torch.Tensor(s_res)
 
         if self.config['ADD_BERT']:
+            # load bert vector
+            bert_vec_save_path = os.path.join(dataset_path, f'{token}.{field_name[0]}vec')
+            if os.path.isfile(bert_vec_save_path):
+                vec = pd.read_csv(bert_vec_save_path, dtype=object)
+                vec['0'] = vec['0'].apply(deal_str)
+            else:
+                # calculate and get bert vector
+                from transformers import AutoTokenizer, AutoModel, logging
+                logging.set_verbosity_warning()
+                MODEL_PATH = self.config['pretrained_bert_model'] or "bert-base-cased"
+                self.tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
+                self.model = AutoModel.from_pretrained(MODEL_PATH)
+
+                tqdm.pandas(desc=f"bert encoding for {suf}")
+                feat[doc_field + '_vec'] = feat[doc_field]
+                vec = feat.groupby(field).progress_apply(
+                    lambda x: bert_encoding([i for i in x[doc_field + '_vec']])).to_frame()
+                vec.reset_index(inplace=True)
+                # vec.columns = [field, doc_field + '_vec']
+                # save bert vector
+                if self.config['save_bert_vec']:
+                    vec.to_csv(bert_vec_save_path, index=False)
+
+            # merge bert vec to feat
+            del feat[doc_field]
+            feat.drop_duplicates(inplace=True)
             feat = feat[feat[field].isin(vec[field])]
             feat = pd.merge(feat, vec, on=field)
-            feat.columns = [field, doc_field, 'long_' + doc_field, doc_field + '_vec']
+            feat.columns = [field, doc_field + '_vec']
+        else:
+            # if ADD_BERT, means that the model did not need docs and long_doc
+            # if not ADD_BERT, means that the model need docs or long_doc.
+            # load docs and long_doc
+            feat[doc_field] = feat[doc_field].apply(word_map)
+
+            # get long doc(DataFrame): user_id/item_id \t long_doc
+            long_doc = feat.groupby(field).apply(lambda x: get_long_doc([i for i in x[doc_field]])).to_frame()
+            long_doc.reset_index(inplace=True)
+
+            # get docs(DataFrame): user_id/item_id \t np.array([max_sent_num, max_sent_len])
+            docs = feat.groupby(field).apply(lambda x: get_docs([i for i in x[doc_field]])).to_frame()
+            docs.reset_index(inplace=True)
+
+            # merge long_doc and docs
+            feat = pd.merge(docs, long_doc, on=field)
+
+            # set head: user_id/item_id \t user_doc/item_doc \t long_user_doc/long_item_doc
+            feat.columns = [field, doc_field, 'long_' + doc_field]
 
         return feat
 
@@ -259,7 +302,6 @@ class PJFDataset(Dataset):
     def field2feats(self, field):
         feats = super(PJFDataset, self).field2feats(field)
         if field == self.uid_field:
-            feats = [self.inter_feat]
             if self.user_doc is not None:
                 feats.append(self.user_doc)
         elif field == self.iid_field:
@@ -280,11 +322,11 @@ class PJFDataset(Dataset):
     def user_single_inter_matrix(self, form='coo', value_field=None):
         if not self.uid_field or not self.iid_field:
             raise ValueError('dataset does not exist uid/iid, thus can not converted to sparse matrix.')
-        user_single_inter = self.inter_feat[self.inter_feat[self.direct_field] == self.geek_direct]
-        return self._create_sparse_matrix(user_single_inter, self.uid_field, self.iid_field, form, value_field)
+        # user_single_inter = self.inter_feat[self.inter_feat[self.direct_field] == self.geek_direct]
+        return self._create_sparse_matrix(self.user_single_inter, self.uid_field, self.iid_field, form, value_field)
 
     def item_single_inter_matrix(self, form='coo', value_field=None):
         if not self.uid_field or not self.iid_field:
             raise ValueError('dataset does not exist uid/iid, thus can not converted to sparse matrix.')
-        item_single_inter = self.inter_feat[self.inter_feat[self.direct_field] != self.geek_direct]
-        return self._create_sparse_matrix(item_single_inter, self.uid_field, self.iid_field, form, value_field)
+        # item_single_inter = self.inter_feat[self.inter_feat[self.direct_field] != self.geek_direct]
+        return self._create_sparse_matrix(self.item_single_inter, self.uid_field, self.iid_field, form, value_field)

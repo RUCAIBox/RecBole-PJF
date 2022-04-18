@@ -20,8 +20,8 @@ class BPJFNN(GeneralRecommender):
 
     def __init__(self, config, dataset):
         super(BPJFNN, self).__init__(config, dataset)
-        self.USER_SENTS = config['USER_SENTS_FIELD']
-        self.ITEM_SENTS = config['ITEM_SENTS_FIELD']
+        self.USER_SENTS = config['USER_DOC_FIELD']
+        self.ITEM_SENTS = config['ITEM_DOC_FIELD']
         self.neg_prefix = config['NEG_PREFIX']
         self.embedding_size = config['embedding_size']
         self.hd_size = config['hidden_size']

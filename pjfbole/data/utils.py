@@ -15,7 +15,6 @@ from logging import getLogger
 from recbole.sampler import Sampler, RepeatableSampler
 from recbole.utils.argument_list import dataset_arguments
 from recbole.utils import set_color
-# from recbole.data.utils import get_dataloader
 from recbole.data.utils import data_preparation as recbole_data_preparation
 from recbole.data.dataloader import *
 
