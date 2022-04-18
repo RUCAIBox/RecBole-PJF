@@ -1,0 +1,8 @@
+# Data
+max_sent_num: 20
+max_sent_len: 30
+
+# Model
+ADD_BERT: True
+BERT_embedding_size: 768
+embedding_size: 128

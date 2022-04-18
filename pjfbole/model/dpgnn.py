@@ -24,8 +24,6 @@ class DPGNN(GeneralRecommender):
 
     def __init__(self, config, dataset):
         super(DPGNN, self).__init__(config, dataset)
-        self.USER_SENTS = config['USER_DOC_FIELD']
-        self.ITEM_SENTS = config['ITEM_DOC_FIELD']
         self.NEG_USER_ID = config['NEG_PREFIX'] + self.USER_ID
         self.NEG_ITEM_ID = config['NEG_PREFIX'] + self.ITEM_ID
         self.neg_prefix = config['NEG_PREFIX']
@@ -200,42 +198,6 @@ class DPGNN(GeneralRecommender):
                                                              [self.n_users, self.n_items, self.n_users, self.n_items])
         return user_e_a, item_e_p, user_e_p, item_e_a
 
-    # def calculate_loss(self, interaction):
-    #     user = interaction[self.USER_ID]
-    #     item = interaction[self.ITEM_ID]
-    #     neg_item = interaction[self.NEG_ITEM_ID]
-    #     user_e_a, item_e_p, user_e_p, item_e_a = self.forward()
-    #     # user active
-    #     u_e_a = user_e_a[user]
-    #     # item passive
-    #     i_e_p = item_e_p[item]
-    #     n_i_e_p = item_e_p[neg_item]
-    #
-    #     # user passive
-    #     u_e_p = user_e_p[user]
-    #     # item active
-    #     i_e_a = item_e_a[item]
-    #     n_i_e_a = item_e_a[neg_item]
-    #
-    #     r_pos = torch.mul(u_e_a, i_e_p).sum(dim=1)
-    #     s_pos = torch.mul(u_e_p, i_e_a).sum(dim=1)
-    #
-    #     r_neg1 = torch.mul(u_e_a, n_i_e_p).sum(dim=1)
-    #     s_neg1 = torch.mul(u_e_p, n_i_e_a).sum(dim=1)
-    #
-    #     mf_loss_u = self.mf_loss(r_pos + s_pos, r_neg1 + s_neg1)
-    #
-    #     reg_loss = 0
-    #     loss = mf_loss_u + self.reg_weight * reg_loss
-    #
-    #     logits_user, labels = self.info_nce_loss(user, is_user=True)
-    #     loss += self.mul_weight * self.mutual_loss(logits_user, labels)
-    #
-    #     logits_job, labels = self.info_nce_loss(item, is_user=False)
-    #     loss += self.mul_weight * self.mutual_loss(logits_job, labels)
-    #
-    #     return loss
-
     def calculate_loss(self, interaction):
         user = interaction[self.USER_ID]
         item = interaction[self.ITEM_ID]
@@ -266,11 +228,6 @@ class DPGNN(GeneralRecommender):
 
         r_neg2 = torch.mul(n_u_e_a, i_e_p).sum(dim=1)
         s_neg2 = torch.mul(n_u_e_p, i_e_a).sum(dim=1)
-
-        # calculate BPR Loss
-        # pos_scores = I_geek + I_job
-        # neg_scores_u = n_I_geek_1 + n_I_job_1
-        # neg_scores_i = n_I_geek_2 + n_I_job_2
 
         mf_loss_u = self.mf_loss(2 * r_pos + 2 * s_pos, r_neg1 + s_neg1 + r_neg2 + s_neg2)
 

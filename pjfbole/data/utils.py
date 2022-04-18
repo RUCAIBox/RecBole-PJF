@@ -172,13 +172,15 @@ def get_dataloader(config, phase):
         type: The dataloader class that meets the requirements in :attr:`config` and :attr:`phase`.
     """
     model_type = config['MODEL_TYPE']
+    model_name = config['model']
     if phase == 'train':
-        if config['model'] == 'DPGNN':
-            return DPGNNTrainDataloader
-        if model_type != ModelType.KNOWLEDGE:
-            return TrainDataLoader
-        else:
-            return KnowledgeBasedDataLoader
+        try:
+            return getattr(importlib.import_module('pjfbole.data.dataloader'), model_name + 'TrainDataloader')
+        except AttributeError:
+            if model_type != ModelType.KNOWLEDGE:
+                return TrainDataLoader
+            else:
+                return KnowledgeBasedDataLoader
     else:
         eval_strategy = config['eval_neg_sample_args']['strategy']
         if eval_strategy in {'none', 'by'}:
