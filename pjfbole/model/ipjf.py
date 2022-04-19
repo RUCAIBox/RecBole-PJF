@@ -22,17 +22,47 @@ class IPJF(GeneralRecommender):
 
     def __init__(self, config, dataset):
         super(IPJF, self).__init__(config, dataset)
-        self.USER_SENTS = config['USER_DOC_FIELD']
-        self.ITEM_SENTS = config['ITEM_DOC_FIELD']
-
-        self.NEG_USER_ID = config['NEG_PREFIX'] + self.USER_ID
-        self.NEG_ITEM_ID = config['NEG_PREFIX'] + self.ITEM_ID
-        self.NEG_USER_SENTS = config['NEG_PREFIX'] + self.USER_SENTS
-        self.NEG_ITEM_SENTS = config['NEG_PREFIX'] + self.ITEM_SENTS
-        self.neg_prefix = config['NEG_PREFIX']
-
-        self.config = config
         self.embedding_size = config['embedding_size']
+        self.is_add_bert = config['ADD_BERT']
+
+        if not self.is_add_bert:
+            self.USER = config['USER_DOC_FIELD']
+            self.ITEM = config['ITEM_DOC_FIELD']
+
+            self.NEG_USER = config['NEG_PREFIX'] + self.USER
+            self.NEG_ITEM = config['NEG_PREFIX'] + self.ITEM
+
+            self.emb = nn.Embedding(len(dataset.wd2id.keys()), self.embedding_size, padding_idx=0)
+            self.geek_channels = config['max_sent_num']  # 10
+            self.job_channels = config['max_sent_num']  # 10
+            self.geek_layer = DocumentEncoder(
+                channels=self.geek_channels,
+                kernel_size=[(5, 1), (3, 1)],
+                pool_size=(2, 1),
+                dim=self.embedding_size,
+                method='max'
+            )
+            self.job_layer = DocumentEncoder(
+                channels=self.job_channels,
+                kernel_size=[(5, 1), (5, 1)],
+                pool_size=(2, 1),
+                dim=self.embedding_size,
+                method='mean'
+            )
+            self.w_att = nn.Parameter(torch.rand(self.embedding_size, self.embedding_size))
+            self.register_parameter('w_att', self.w_att)
+
+            self.tanh = nn.Tanh()
+        else:
+            self.USER = self.USER_ID
+            self.ITEM = self.ITEM_ID
+
+            self.NEG_USER = config['NEG_PREFIX'] + self.USER
+            self.NEG_ITEM = config['NEG_PREFIX'] + self.ITEM
+
+            self.bert_lr = nn.Linear(config['BERT_embedding_size'], self.embedding_size)
+            self.bert_user = dataset.bert_user.to(config['device'])
+            self.bert_item = dataset.bert_item.to(config['device'])
 
         self.geek_fusion_layer = FusionLayer(self.embedding_size)
         self.job_fusion_layer = FusionLayer(self.embedding_size)
@@ -46,18 +76,43 @@ class IPJF(GeneralRecommender):
             nn.Linear(2 * self.embedding_size, 1)
         )
 
-        self.bert_lr = nn.Linear(config['BERT_embedding_size'], self.embedding_size)
-        self.bert_user = dataset.bert_user.to(config['device'])
-        self.bert_item = dataset.bert_item.to(config['device'])
         self.sigmoid = nn.Sigmoid()
         self.loss = HingeLoss()
 
         self.apply(self._init_weights)
 
-    def forward(self, geek_id, job_id):
-        # bert
+    def doc_encode_by_cnn(self, geek_docs, job_docs):
+        geek_docs = self.emb(geek_docs)
+        job_docs = self.emb(job_docs)
+
+        geek_matrix = self.geek_layer(geek_docs)  # [2048, 20, 64]
+        job_matrix = self.job_layer(job_docs)  # [2048, 20, 64]
+
+        # A = job_matrix \cdot self.w_att \cdot geek_matrix
+        A = torch.matmul(geek_matrix, self.w_att)
+        A = torch.matmul(A, job_matrix.permute(0, 2, 1))  # [2048, 20, 20]
+
+        geek_attn = A.sum(dim=2)  # [2048, 20]
+        geek_attn = geek_attn / torch.max(geek_attn)
+        geek_attn = torch.softmax(geek_attn, dim=1)  # [2048, 20]
+        geek_vec = torch.sum((geek_matrix.permute(2, 0, 1) * geek_attn).permute(1, 2, 0), dim=1)  # [2048, 64]
+
+        job_attn = A.sum(dim=1)
+        job_attn = job_attn / torch.max(job_attn)
+        job_attn = torch.softmax(job_attn, dim=1)
+        job_vec = torch.sum((job_matrix.permute(2, 0, 1) * job_attn).permute(1, 2, 0), dim=1)   # [2048, 64]
+        return geek_vec, job_vec
+
+    def doc_encode_by_bert(self, geek_id, job_id):
         geek_vec = self.bert_lr(self.bert_user[geek_id])
         job_vec = self.bert_lr(self.bert_item[job_id])
+        return geek_vec, job_vec
+
+    def forward(self, geek, job):
+        if not self.is_add_bert:
+            geek_vec, job_vec = self.doc_encode_by_cnn(geek, job)
+        else:
+            geek_vec, job_vec = self.doc_encode_by_bert(geek, job)
 
         f_s = self.geek_fusion_layer(geek_vec, job_vec)
         f_e = self.job_fusion_layer(geek_vec, job_vec)
@@ -94,14 +149,14 @@ class IPJF(GeneralRecommender):
         return loss_e_i, loss_e_m
 
     def calculate_loss(self, interaction):
-        pos_geek = interaction[self.USER_ID]
-        pos_job = interaction[self.ITEM_ID]
+        pos_geek = interaction[self.USER]
+        pos_job = interaction[self.ITEM]
 
-        neu_job = interaction[self.NEG_ITEM_ID]  # 中性岗位
-        neg_job = interaction[self.NEG_ITEM_ID]  # 负岗位
+        neu_job = interaction[self.NEG_ITEM]  # 中性岗位
+        neg_job = interaction[self.NEG_ITEM]  # 负岗位
 
-        neu_geek = interaction[self.NEG_USER_ID]  # 中性用户
-        neg_geek = interaction[self.NEG_USER_ID]  # 负用户
+        neu_geek = interaction[self.NEG_USER]  # 中性用户
+        neg_geek = interaction[self.NEG_USER]  # 负用户
 
         loss_s_i, loss_s_m = self.calculate_geek_loss(pos_geek, pos_job, neu_job, neg_job)
         loss_e_i, loss_e_m = self.calculate_job_loss(pos_geek, pos_job, neu_geek, neg_geek)
@@ -110,10 +165,32 @@ class IPJF(GeneralRecommender):
         return loss
 
     def predict(self, interaction):
-        geek_id = interaction[self.USER_ID]
-        job_id = interaction[self.ITEM_ID]
+        geek_id = interaction[self.USER]
+        job_id = interaction[self.ITEM]
         _, _, match_score = self.forward(geek_id, job_id)
         return torch.sigmoid(match_score).squeeze()
+
+
+class DocumentEncoder(nn.Module):
+    def __init__(self, channels, kernel_size, pool_size, dim, method='max'):
+        super(DocumentEncoder, self).__init__()
+        self.net1 = nn.Sequential(
+            nn.Conv2d(channels, channels, kernel_size[0]),
+            nn.BatchNorm2d(channels),
+            nn.ReLU(),
+            nn.MaxPool2d(pool_size)
+        )
+        self.net2 = nn.Sequential(
+            nn.Conv2d(channels, channels, kernel_size[1]),
+            nn.BatchNorm2d(channels),
+            nn.ReLU(),
+            nn.AdaptiveMaxPool2d((1, dim))
+        )
+
+    def forward(self, x):
+        x = self.net1(x)  # [2048, 20, 30, 64]
+        x = self.net2(x).squeeze(2)  # [2048, 20, 64]
+        return x
 
 
 class SimpleFusionLayer(nn.Module):
