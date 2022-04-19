@@ -23,7 +23,7 @@ def main():
     hp = HyperTuning(objective_function, algo='exhaustive',
                      params_file=args.params_file, fixed_config_file_list=config_file_list)
     hp.run()
-    with open(output_file, 'w') as fp:
+    with open(args.output_file, 'w') as fp:
         for params in hp.params2result:
             fp.write(params + '\n')
             fp.write('Valid result:\n' + str(hp.params2result[params]['best_valid_result']) + '\n')

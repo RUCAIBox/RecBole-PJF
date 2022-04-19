@@ -61,15 +61,6 @@ class PJFDataset(Dataset):
             self._collect_text_vec()
 
     def _collect_text_vec(self):
-        # self.bert_user = torch.FloatTensor([])
-        # self.uid2vec = dict()
-        # for j in tqdm(self.user_doc[self.udoc_field + '_vec']):
-        #     self.bert_user = torch.cat([self.bert_user.squeeze(), j], dim=0)
-        #
-        # self.bert_item = torch.FloatTensor([])
-        # self.iid2vec = dict()
-        # for j in tqdm(self.item_doc[self.idoc_field + '_vec']):
-        #     self.bert_item = torch.cat([self.bert_item.squeeze(), j], dim=0)
         self.bert_user = torch.stack(self.user_doc[self.udoc_field + '_vec'].values.tolist(), dim=1).transpose(0, 1)
         self.bert_item = torch.stack(self.item_doc[self.idoc_field + '_vec'].values.tolist(), dim=1).transpose(0, 1)
 
