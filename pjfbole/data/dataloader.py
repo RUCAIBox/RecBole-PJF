@@ -34,6 +34,7 @@ class DPGNNTrainDataloader(TrainDataLoader):
         inter_feat.update(inter_feat_neg_u)
         return inter_feat
 
+
 class IPJFTrainDataloader(TrainDataLoader):
     def __init__(self, config, dataset, sampler, shuffle=False):
         super().__init__(config, dataset, sampler, shuffle=shuffle)
@@ -55,3 +56,8 @@ class IPJFTrainDataloader(TrainDataLoader):
         inter_feat.update(inter_feat_neg_i)
         inter_feat.update(inter_feat_neg_u)
         return inter_feat
+
+    def _next_batch_data(self):
+        cur_data = self._neg_sampling(self.dataset[self.pr:self.pr + self.step])
+        self.pr += self.step
+        return cur_data

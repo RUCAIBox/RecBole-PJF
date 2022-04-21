@@ -207,12 +207,10 @@ class PJFDataset(Dataset):
             s = s[:512]
             input = self.tokenizer(s, return_tensors="pt")
             output = self.model(**input)[0][:, 0].detach()
-            return output
+            return output.squeeze()
 
         def deal_str(vec_string):
-            vec_string = vec_string[10: -3]
-            s_list = vec_string.replace(' ', '').replace('\n', '').split(',')
-            s_res = list(map(lambda x: float(x), s_list))
+            s_res = list(map(lambda x: float(x), vec_string.split(',')))
             return torch.Tensor(s_res)
 
         if self.config['ADD_BERT']:
@@ -220,7 +218,7 @@ class PJFDataset(Dataset):
             bert_vec_save_path = os.path.join(dataset_path, f'{token}.{field_name[0]}vec')
             if os.path.isfile(bert_vec_save_path):
                 vec = pd.read_csv(bert_vec_save_path, dtype=object)
-                vec['0'] = vec['0'].apply(deal_str)
+                vec[doc_field + '_vec_str'] = vec[doc_field + '_vec_str'].apply(deal_str)
             else:
                 # calculate and get bert vector
                 from transformers import AutoTokenizer, AutoModel, logging
@@ -230,14 +228,19 @@ class PJFDataset(Dataset):
                 self.model = AutoModel.from_pretrained(MODEL_PATH)
 
                 tqdm.pandas(desc=f"bert encoding for {suf}")
-                feat[doc_field + '_vec'] = feat[doc_field]
                 vec = feat.groupby(field).progress_apply(
-                    lambda x: bert_encoding([i for i in x[doc_field + '_vec']])).to_frame()
+                    lambda x: bert_encoding([i for i in x[doc_field]])).to_frame()
                 vec.reset_index(inplace=True)
                 # vec.columns = [field, doc_field + '_vec']
+                # 增加一列 str
+                vec[doc_field + '_vec_str'] = vec[0].astype(str).apply(
+                    lambda x: x[10:-3].replace(' ', '').replace('\n', ''))
+                # 设置字符串保存格式，[field, doc_field + '_vec', doc_field + '_vec_str')
                 # save bert vector
-                if self.config['save_bert_vec']:
-                    vec.to_csv(bert_vec_save_path, index=False)
+                if True or self.config['save_bert_vec']:
+                    # vec.to_csv(bert_vec_save_path, index=False)
+                    vec[[field, doc_field + '_vec_str']].to_csv(bert_vec_save_path, index=False)
+                    del vec[doc_field + '_vec_str']
 
             # merge bert vec to feat
             del feat[doc_field]
