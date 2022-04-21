@@ -116,8 +116,8 @@ class APJFNN(GeneralRecommender):
         self.embedding_size = config['embedding_size']
         self.hd_size = config['hidden_size']
         self.dropout = config['dropout']
-        self.wd_num = len(dataset.wd2id.keys())
 
+        self.wd_num = len(dataset.wd2id.keys())
         self.emb = nn.Embedding(self.wd_num, self.embedding_size, padding_idx=0)
 
         self.geek_biLSTM = nn.LSTM(
@@ -145,7 +145,6 @@ class APJFNN(GeneralRecommender):
             activation='tanh'
         )
 
-        # self.loss = nn.BCEWithLogitsLoss()
         self.loss = BPRLoss()
 
     def forward(self, interaction, geek_field, job_field):
