@@ -29,6 +29,9 @@ class IPJF(GeneralRecommender):
             self.USER = config['USER_DOC_FIELD']
             self.ITEM = config['ITEM_DOC_FIELD']
 
+            self.NEU_USER = 'neu_' + self.USER
+            self.NEU_ITEM = 'neu_' + self.ITEM
+
             self.NEG_USER = config['NEG_PREFIX'] + self.USER
             self.NEG_ITEM = config['NEG_PREFIX'] + self.ITEM
 
@@ -57,6 +60,9 @@ class IPJF(GeneralRecommender):
             self.USER = self.USER_ID
             self.ITEM = self.ITEM_ID
 
+            self.NEU_USER = 'neu_' + self.USER
+            self.NEU_ITEM = 'neu_' + self.ITEM
+
             self.NEG_USER = config['NEG_PREFIX'] + self.USER
             self.NEG_ITEM = config['NEG_PREFIX'] + self.ITEM
 
@@ -66,7 +72,6 @@ class IPJF(GeneralRecommender):
 
         self.geek_fusion_layer = FusionLayer(self.embedding_size)
         self.job_fusion_layer = FusionLayer(self.embedding_size)
-
         self.w_job = nn.Linear(2 * self.embedding_size, 1)
         self.w_geek = nn.Linear(2 * self.embedding_size, 1)
 
@@ -152,10 +157,10 @@ class IPJF(GeneralRecommender):
         pos_geek = interaction[self.USER].long()
         pos_job = interaction[self.ITEM].long()
 
-        neu_job = interaction[self.NEG_ITEM].long()  # 中性岗位
+        neu_job = interaction[self.NEU_ITEM].long()  # 中性岗位
         neg_job = interaction[self.NEG_ITEM].long()  # 负岗位
 
-        neu_geek = interaction[self.NEG_USER].long()  # 中性用户
+        neu_geek = interaction[self.NEU_USER].long()  # 中性用户
         neg_geek = interaction[self.NEG_USER].long()  # 负用户
 
         loss_s_i, loss_s_m = self.calculate_geek_loss(pos_geek, pos_job, neu_job, neg_job)
