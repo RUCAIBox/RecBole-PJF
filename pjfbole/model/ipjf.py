@@ -72,7 +72,6 @@ class IPJF(GeneralRecommender):
 
         self.geek_fusion_layer = FusionLayer(self.embedding_size)
         self.job_fusion_layer = FusionLayer(self.embedding_size)
-
         self.w_job = nn.Linear(2 * self.embedding_size, 1)
         self.w_geek = nn.Linear(2 * self.embedding_size, 1)
 
