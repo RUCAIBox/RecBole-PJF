@@ -4,3 +4,4 @@ from pjfbole.model.bpjfnn import BPJFNN
 from pjfbole.model.dpgnn import DPGNN
 from pjfbole.model.bert import BERT
 from pjfbole.model.ipjf import IPJF
+from pjfbole.model.lfrr import LFRR
