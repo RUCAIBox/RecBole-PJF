@@ -26,18 +26,13 @@ class DPGNN(GeneralRecommender):
         super(DPGNN, self).__init__(config, dataset)
         self.NEG_USER_ID = config['NEG_PREFIX'] + self.USER_ID
         self.NEG_ITEM_ID = config['NEG_PREFIX'] + self.ITEM_ID
-        self.neg_prefix = config['NEG_PREFIX']
         # load parameters info
         self.embedding_size = config['embedding_size']
 
         # load dataset info
         self.interaction_matrix = dataset.inter_matrix(form='coo').astype(np.float32)
-        # -==============================
-        # self.user_add_matrix = dataset.inter_matrix(form='coo').astype(np.float32)
-        # self.job_add_matrix = dataset.inter_matrix(form='coo').astype(np.float32)
         self.user_add_matrix = dataset.user_single_inter_matrix(form='coo').astype(np.float32)
         self.job_add_matrix = dataset.item_single_inter_matrix(form='coo').astype(np.float32)
-        # -==============================
 
         # load parameters info 
         self.latent_dim = config['embedding_size']  # int type:the embedding size of lightGCN

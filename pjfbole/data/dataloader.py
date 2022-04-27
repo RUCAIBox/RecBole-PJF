@@ -107,3 +107,6 @@ class IPJFTrainDataloader(TrainDataLoader):
         return cur_data
 
 
+class LFRRTrainDataloader(DPGNNTrainDataloader):
+    def __init__(self, config, dataset, sampler, shuffle=False):
+        super().__init__(config, dataset, sampler, shuffle=shuffle)
