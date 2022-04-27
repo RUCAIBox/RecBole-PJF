@@ -34,16 +34,19 @@ class LFRR(GeneralRecommender):
         # parameters initialization
         self.apply(xavier_normal_initialization)
 
-    def forward(self, user, item):
+    def forward_ui(self, user, item):
         u_1 = self.user_embedding_1(user)
-        u_2 = self.user_embedding_2(user)
         i_1 = self.item_embedding_1(item)
-        i_2 = self.item_embedding_2(item)
 
         s_ui = torch.mul(u_1, i_1).sum(dim=1)
+        return s_ui
+
+    def forward_iu(self, user, item):
+        u_2 = self.user_embedding_2(user)
+        i_2 = self.item_embedding_2(item)
+
         s_iu = torch.mul(u_2, i_2).sum(dim=1)
-        score = 2 * s_ui * s_iu / (s_ui + s_iu)
-        return score
+        return s_iu
 
     def calculate_loss(self, interaction):
         pos_user = interaction[self.USER_ID]
@@ -51,15 +54,20 @@ class LFRR(GeneralRecommender):
         neg_item = interaction[self.NEG_ITEM_ID]
         neg_user = interaction[self.NEG_USER_ID]
 
-        score_pos_1 = self.forward(pos_user, pos_item)
-        score_neg_1 = self.forward(pos_user, neg_item)
-        score_neg_2 = self.forward(neg_user, pos_item)
-        loss = self.loss(score_pos_1, score_neg_1) + self.loss(score_pos_1, score_neg_2)
+        score_pos_1 = self.forward_ui(pos_user, pos_item)
+        score_neg_1 = self.forward_ui(pos_user, neg_item)
+
+        score_pos_2 = self.forward_iu(pos_user, pos_item)
+        score_neg_2 = self.forward_iu(neg_user, pos_item)
+
+        loss = self.loss(score_pos_1, score_neg_1) + self.loss(score_pos_2, score_neg_2)
         return loss
 
     def predict(self, interaction):
         user = interaction[self.USER_ID]
         item = interaction[self.ITEM_ID]
-        score = self.forward(user, item)
+        s_ui = self.forward_ui(user, item)
+        s_iu = self.forward_iu(user, item)
+        score = 2 * s_ui * s_iu / (s_ui + s_iu)
         return score
 
