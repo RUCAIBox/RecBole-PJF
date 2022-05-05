@@ -54,8 +54,6 @@ class PJFDataset(Dataset):
         if self.config['multi_direction']:
             self.direct_field = self.config['DIRECT_FIELD']
             self.geek_direct = self.field2token_id[self.direct_field]['0']
-            # self.user_single_inter = self.inter_feat[self.inter_feat[self.direct_field] == self.geek_direct]
-            # self.item_single_inter = self.inter_feat[self.inter_feat[self.direct_field] != self.geek_direct]
 
         self.inter_feat = self.inter_feat[self.inter_feat[self.label_field] == 1]
         if self.config['ADD_BERT'] and self.user_doc is not None:
@@ -70,7 +68,7 @@ class PJFDataset(Dataset):
             if isinstance(value, (list, np.ndarray, torch.Tensor)):
                 return value
             else:
-                return torch.zeros(fill_size)
+                return torch.zeros(fill_size).long()
 
         ufield_list = [self.udoc_field, 'long_' + self.udoc_field, self.udoc_field + '_vec']
         ifield_list = [self.idoc_field, 'long_' + self.idoc_field, self.idoc_field + '_vec']
@@ -174,7 +172,7 @@ class PJFDataset(Dataset):
             return value
 
         def get_long_doc(single_doc: list):
-            long_doc = np.array([])
+            long_doc = np.array([]).astype(int)
             for s in single_doc:
                 long_doc = np.append(long_doc, s)
                 if len(long_doc) > self.config['max_longsent_len']:
@@ -183,7 +181,7 @@ class PJFDataset(Dataset):
 
         def get_docs(single_doc: list):
             array_size = [self.config['max_sent_num'], self.config['max_sent_len']]
-            docs = np.zeros(array_size)
+            docs = np.zeros(array_size).astype(int)
             sent_num = 0
             for s in single_doc:
                 if len(s) > array_size[1]:

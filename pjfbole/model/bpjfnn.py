@@ -58,7 +58,7 @@ class BPJFNN(GeneralRecommender):
         self.loss = BPRLoss()
 
     def _single_bpj_layer(self, interaction, token, field):
-        longsent = interaction[field].long()
+        longsent = interaction[field]
         vec = self.emb(longsent)
         vec, _ = getattr(self, f'{token}_biLSTM')(vec)
         vec = torch.sum(vec, dim=1) / torch.sum(longsent != 0).unsqueeze(-1)
