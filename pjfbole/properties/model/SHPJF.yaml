@@ -1,0 +1,15 @@
+# Data
+min_word_cnt: 5
+max_longsent_len: 192
+query_his_len: 64
+query_wd_len: 4
+
+# Model
+wd_embedding_size: 128
+user_embedding_size: 16
+bert_embedding_size: 768
+hidden_size: 64
+dropout: 0.2
+num_heads: 1
+beta: 0.2
+k: 8

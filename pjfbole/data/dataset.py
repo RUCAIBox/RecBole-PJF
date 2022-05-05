@@ -325,3 +325,23 @@ class PJFDataset(Dataset):
             raise ValueError('dataset does not exist uid/iid, thus can not converted to sparse matrix.')
         item_single_inter = self.inter_feat[self.inter_feat[self.direct_field] != self.geek_direct]
         return self._create_sparse_matrix(item_single_inter, self.uid_field, self.iid_field, form, value_field)
+
+
+class SHPJFDataset(PJFDataset):
+    def __init__(self, config):
+        super().__init__(config)
+
+        self._remap_qwd_id()
+
+    def _remap_qwd_id(self):
+        def word_map(sent):
+            value = []
+            for i, wd in enumerate(sent):
+                wd = self.field2id_token['qwd_his'][wd]
+                if wd not in self.wd2id.keys():
+                    self.wd2id[wd] = len(self.wd2id)
+                    self.id2wd.append(wd)
+                value.append(self.wd2id[wd])
+            return value
+
+        self.inter_feat['qwd_his'] = self.inter_feat['qwd_his'].apply(word_map)
