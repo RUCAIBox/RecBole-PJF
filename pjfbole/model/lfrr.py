@@ -48,26 +48,27 @@ class LFRR(GeneralRecommender):
         s_iu = torch.mul(u_2, i_2).sum(dim=1)
         return s_iu
 
+    def forward(self, user, item):
+        s_ui = self.forward_ui(user, item)
+        s_iu = self.forward_iu(user, item)
+        score = s_ui + s_iu
+        return score
+
     def calculate_loss(self, interaction):
         pos_user = interaction[self.USER_ID]
         pos_item = interaction[self.ITEM_ID]
         neg_item = interaction[self.NEG_ITEM_ID]
         neg_user = interaction[self.NEG_USER_ID]
 
-        score_pos_1 = self.forward_ui(pos_user, pos_item)
-        score_neg_1 = self.forward_ui(pos_user, neg_item)
+        score_pos = self.forward(pos_user, pos_item)
+        score_neg_1 = self.forward(pos_user, neg_item)
+        score_neg_2 = self.forward(neg_user, pos_item)
 
-        score_pos_2 = self.forward_iu(pos_user, pos_item)
-        score_neg_2 = self.forward_iu(neg_user, pos_item)
-
-        loss = self.loss(score_pos_1, score_neg_1) + self.loss(score_pos_2, score_neg_2)
+        loss = self.loss(score_pos, score_neg_1) + self.loss(score_pos, score_neg_2)
         return loss
 
     def predict(self, interaction):
         user = interaction[self.USER_ID]
         item = interaction[self.ITEM_ID]
-        s_ui = self.forward_ui(user, item)
-        s_iu = self.forward_iu(user, item)
-        score = 2 * s_ui * s_iu / (s_ui + s_iu)
-        return score
+        return self.forward(user, item)
 
