@@ -56,6 +56,7 @@ class PJFDataset(Dataset):
             self.geek_direct = self.field2token_id[self.direct_field]['0']
 
         self.inter_feat = self.inter_feat[self.inter_feat[self.label_field] == 1]
+        # is load pre-trained text vec
         if self.config['ADD_BERT'] and self.user_doc is not None:
             self._collect_text_vec()
 
@@ -248,8 +249,8 @@ class PJFDataset(Dataset):
             feat = pd.merge(feat, vec, on=field)
             feat.columns = [field, doc_field + '_vec']
         else:
-            # if ADD_BERT, means that the model did not need docs and long_doc
-            # if not ADD_BERT, means that the model need docs or long_doc.
+            # if ADD_VEC, means that the model did not need docs and long_doc
+            # if not ADD_VEC, means that the model need docs or long_doc.
             # load docs and long_doc
             feat[doc_field] = feat[doc_field].apply(word_map)
 
@@ -315,16 +316,16 @@ class PJFDataset(Dataset):
     def user_single_inter_matrix(self, form='coo', value_field=None):
         if not self.uid_field or not self.iid_field:
             raise ValueError('dataset does not exist uid/iid, thus can not converted to sparse matrix.')
-        user_single_inter = self.inter_feat[self.inter_feat[self.direct_field] == self.geek_direct]
-        return self._create_sparse_matrix(user_single_inter, self.uid_field, self.iid_field, form, value_field)
+        self.user_single_inter = self.inter_feat[self.inter_feat[self.direct_field] == self.geek_direct]
+        return self._create_sparse_matrix(self.user_single_inter, self.uid_field, self.iid_field, form, value_field)
 
     def item_single_inter_matrix(self, form='coo', value_field=None):
         if not self.uid_field or not self.iid_field:
             raise ValueError('dataset does not exist uid/iid, thus can not converted to sparse matrix.')
-        item_single_inter = self.inter_feat[self.inter_feat[self.direct_field] != self.geek_direct]
-        return self._create_sparse_matrix(item_single_inter, self.uid_field, self.iid_field, form, value_field)
+        self.item_single_inter = self.inter_feat[self.inter_feat[self.direct_field] != self.geek_direct]
+        return self._create_sparse_matrix(self.item_single_inter, self.uid_field, self.iid_field, form, value_field)
 
-
+      
 class SHPJFDataset(PJFDataset):
     def __init__(self, config):
         super().__init__(config)
