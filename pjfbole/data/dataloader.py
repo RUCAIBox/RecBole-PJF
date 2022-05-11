@@ -12,6 +12,7 @@ import numpy as np
 from recbole.data.dataloader.general_dataloader import TrainDataLoader, NegSampleEvalDataLoader
 from recbole.data.interaction import Interaction
 
+
 class DPGNNTrainDataloader(TrainDataLoader):
     def __init__(self, config, dataset, sampler, shuffle=False):
         super().__init__(config, dataset, sampler, shuffle=shuffle)
@@ -110,3 +111,16 @@ class IPJFTrainDataloader(TrainDataLoader):
 class LFRRTrainDataloader(DPGNNTrainDataloader):
     def __init__(self, config, dataset, sampler, shuffle=False):
         super().__init__(config, dataset, sampler, shuffle=shuffle)
+
+
+class PJFFFTrainDataloader(TrainDataLoader):
+    def __init__(self, config, dataset, sampler, shuffle=False):
+        super().__init__(config, dataset, sampler, shuffle=shuffle)
+
+    def _neg_sampling(self, inter_feat):
+        inter_feat_neg = super(PJFFFTrainDataloader, self)._neg_sampling(inter_feat)
+        inter_feat.update(inter_feat_neg)
+        # inter_feat = pd.merge(inter_feat, dataset.his_user, on='item_id')
+        # inter_feat = pd.merge(inter_feat, dataset.his_item, on='user_id')
+        # inter_feat = pd.merge(inter_feat, dataset.his_user, on='item_id')
+        return inter_feat

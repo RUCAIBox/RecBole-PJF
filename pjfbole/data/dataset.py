@@ -16,7 +16,7 @@ import torch
 from tqdm import tqdm
 
 from recbole.data.dataset import Dataset
-from recbole.utils import set_color
+from recbole.utils import  FeatureType, set_color
 from recbole.data.interaction import Interaction
 
 
@@ -54,6 +54,8 @@ class PJFDataset(Dataset):
         if self.config['multi_direction']:
             self.direct_field = self.config['DIRECT_FIELD']
             self.geek_direct = self.field2token_id[self.direct_field]['0']
+            self.user_single_inter = self.inter_feat[self.inter_feat[self.direct_field] == self.geek_direct]
+            self.item_single_inter = self.inter_feat[self.inter_feat[self.direct_field] != self.geek_direct]
 
         self.inter_feat = self.inter_feat[self.inter_feat[self.label_field] == 1]
         # is load pre-trained text vec
@@ -316,20 +318,19 @@ class PJFDataset(Dataset):
     def user_single_inter_matrix(self, form='coo', value_field=None):
         if not self.uid_field or not self.iid_field:
             raise ValueError('dataset does not exist uid/iid, thus can not converted to sparse matrix.')
-        self.user_single_inter = self.inter_feat[self.inter_feat[self.direct_field] == self.geek_direct]
+        # self.user_single_inter = self.inter_feat[self.inter_feat[self.direct_field] == self.geek_direct]
         return self._create_sparse_matrix(self.user_single_inter, self.uid_field, self.iid_field, form, value_field)
 
     def item_single_inter_matrix(self, form='coo', value_field=None):
         if not self.uid_field or not self.iid_field:
             raise ValueError('dataset does not exist uid/iid, thus can not converted to sparse matrix.')
-        self.item_single_inter = self.inter_feat[self.inter_feat[self.direct_field] != self.geek_direct]
+        # self.item_single_inter = self.inter_feat[self.inter_feat[self.direct_field] != self.geek_direct]
         return self._create_sparse_matrix(self.item_single_inter, self.uid_field, self.iid_field, form, value_field)
 
       
 class SHPJFDataset(PJFDataset):
     def __init__(self, config):
         super().__init__(config)
-
         self._remap_qwd_id()
 
     def _remap_qwd_id(self):
@@ -344,3 +345,75 @@ class SHPJFDataset(PJFDataset):
             return value
 
         self.inter_feat['qwd_his'] = self.inter_feat['qwd_his'].apply(word_map)
+
+
+class PJFFFDataset(PJFDataset):
+    def __init__(self, config):
+        self.his_len = config['history_item_len']
+        self.his_item = None
+        self.his_user = None
+        self.his_items_field = 'his_items'
+        self.his_users_field = 'his_users'
+        super().__init__(config)
+
+    def _data_processing(self):
+        super(PJFFFDataset, self)._data_processing()
+        self._collect_inter_his()
+        self._his_fillna()
+
+    def _his_fillna(self):
+        def fill_nan(value, fill_size):
+            if isinstance(value, (list, np.ndarray, torch.Tensor)):
+                return value
+            else:
+                return torch.zeros(fill_size).long()
+
+        new_his_item_df = pd.DataFrame({self.uid_field: np.arange(self.user_num)})
+        self.his_item = pd.merge(new_his_item_df, self.his_item, on=self.uid_field, how='left')
+        self.his_item[self.his_items_field].fillna(value=0, inplace=True)
+        self.his_item[self.his_items_field] = self.his_item[self.his_items_field].apply(
+            fill_nan, fill_size=[self.his_len])
+
+        new_his_user_df = pd.DataFrame({self.iid_field: np.arange(self.item_num)})
+        self.his_user = pd.merge(new_his_user_df, self.his_user, on=self.iid_field, how='left')
+        self.his_user[self.his_users_field].fillna(value=0, inplace=True)
+        self.his_user[self.his_users_field] = self.his_user[self.his_users_field].apply(
+            fill_nan, fill_size=[self.his_len])
+
+    def _collect_inter_his(self):
+        if self.time_field:
+            self.inter_feat.sort_values(by=self.time_field, ascending=True)
+
+        def get_his_ids(id_list: list):
+            his_ids = np.array([]).astype(int)
+            for id in id_list:
+                his_ids = np.append(his_ids, id)
+            if len(his_ids) > self.his_len:
+                return his_ids[len(his_ids) - self.his_len:]
+            return np.concatenate((his_ids, np.zeros(self.his_len - len(his_ids))), axis=0)
+
+        self.his_user = self.inter_feat.groupby(self.iid_field).apply(
+            lambda x: get_his_ids([i for i in x[self.uid_field]])).to_frame()
+        self.his_user.reset_index(inplace=True)
+        self.his_user.columns = [self.iid_field, self.his_users_field]
+
+        self.his_item = self.inter_feat.groupby(self.uid_field).apply(
+            lambda x: get_his_ids([i for i in x[self.iid_field]])).to_frame()
+        self.his_item.reset_index(inplace=True)
+        self.his_item.columns = [self.uid_field, self.his_items_field]
+
+    def _change_feat_format(self):
+        super(PJFDataset, self)._change_feat_format()
+        self._change_his_format()
+
+    def _change_his_format(self):
+        self.his_item = self._doc_dataframe_to_interaction(self.his_item)
+        self.his_user = self._doc_dataframe_to_interaction(self.his_user)
+
+    def join(self, df):
+        df = super(PJFDataset, self).join(df)
+        if self.his_item is not None and self.uid_field in df:
+            df.update(self.his_item[df[self.uid_field]])
+        if self.his_user is not None and self.iid_field in df:
+            df.update(self.his_user[df[self.iid_field]])
+        return df
