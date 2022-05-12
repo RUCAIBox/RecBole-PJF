@@ -402,6 +402,9 @@ class PJFFFDataset(PJFDataset):
         self.his_item.reset_index(inplace=True)
         self.his_item.columns = [self.uid_field, self.his_items_field]
 
+        # self.inter_feat = self.inter_feat[self.inter_feat[self.uid_field].isin(self.his_item[self.uid_field])]
+        # self.inter_feat = self.inter_feat[self.inter_feat[self.iid_field].isin(self.his_user[self.iid_field])]
+
     def _change_feat_format(self):
         super(PJFDataset, self)._change_feat_format()
         self._change_his_format()
@@ -409,6 +412,13 @@ class PJFFFDataset(PJFDataset):
     def _change_his_format(self):
         self.his_item = self._doc_dataframe_to_interaction(self.his_item)
         self.his_user = self._doc_dataframe_to_interaction(self.his_user)
+
+    def change_direction(self):
+        """Change direction for Validation and testing.
+        """
+        self.uid_field, self.iid_field = self.iid_field, self.uid_field
+        self.user_feat, self.item_feat = self.item_feat, self.user_feat
+        self.his_item, self.his_user = self.his_user, self.his_item
 
     def join(self, df):
         df = super(PJFDataset, self).join(df)
