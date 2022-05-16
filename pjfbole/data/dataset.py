@@ -356,10 +356,21 @@ class PJFFFDataset(PJFDataset):
         self.his_users_field = 'his_users'
         super().__init__(config)
 
-    def _data_processing(self):
-        super(PJFFFDataset, self)._data_processing()
-        self._collect_inter_his()
-        self._his_fillna()
+    def build(self):
+        """Processing dataset according to evaluation setting, including Group, Order and Split.
+        See :class:`~recbole.config.eval_setting.EvalSetting` for details.
+
+        Returns:
+            list: List of built :class:`Dataset`.
+        """
+        datasets = super(PJFFFDataset, self).build()
+        datasets[0]._collect_inter_his()
+        datasets[0]._his_fillna()
+        datasets[0]._change_his_format()
+        for d in datasets[1:]:
+            d.his_item = datasets[0].his_item
+            d.his_user = datasets[0].his_user
+        return datasets
 
     def _his_fillna(self):
         def fill_nan(value, fill_size):
@@ -382,7 +393,7 @@ class PJFFFDataset(PJFDataset):
 
     def _collect_inter_his(self):
         if self.time_field:
-            self.inter_feat.sort_values(by=self.time_field, ascending=True)
+            self.inter_feat.sort(by=self.time_field, ascending=True)
 
         def get_his_ids(id_list: list):
             his_ids = np.array([]).astype(int)
@@ -392,22 +403,15 @@ class PJFFFDataset(PJFDataset):
                 return his_ids[len(his_ids) - self.his_len:]
             return np.concatenate((his_ids, np.zeros(self.his_len - len(his_ids))), axis=0)
 
-        self.his_user = self.inter_feat.groupby(self.iid_field).apply(
+        self.his_user = pd.DataFrame(self.inter_feat.interaction).groupby(self.iid_field).apply(
             lambda x: get_his_ids([i for i in x[self.uid_field]])).to_frame()
         self.his_user.reset_index(inplace=True)
         self.his_user.columns = [self.iid_field, self.his_users_field]
 
-        self.his_item = self.inter_feat.groupby(self.uid_field).apply(
+        self.his_item = pd.DataFrame(self.inter_feat.interaction).groupby(self.uid_field).apply(
             lambda x: get_his_ids([i for i in x[self.iid_field]])).to_frame()
         self.his_item.reset_index(inplace=True)
         self.his_item.columns = [self.uid_field, self.his_items_field]
-
-        # self.inter_feat = self.inter_feat[self.inter_feat[self.uid_field].isin(self.his_item[self.uid_field])]
-        # self.inter_feat = self.inter_feat[self.inter_feat[self.iid_field].isin(self.his_user[self.iid_field])]
-
-    def _change_feat_format(self):
-        super(PJFDataset, self)._change_feat_format()
-        self._change_his_format()
 
     def _change_his_format(self):
         self.his_item = self._doc_dataframe_to_interaction(self.his_item)
