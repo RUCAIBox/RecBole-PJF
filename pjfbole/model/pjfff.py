@@ -53,7 +53,7 @@ class PJFFF(GeneralRecommender):
         self.job_layer = nn.Linear(self.embedding_size * 2, self.embedding_size)
         self.geek_layer = nn.Linear(self.embedding_size * 2, self.embedding_size)
 
-        self.loss = nn.BCEWithLogitsLoss()
+        self.loss = BPRLoss()
         self.sigmoid = nn.Sigmoid()
         self.apply(self._init_weights)
 
@@ -120,6 +120,7 @@ class PJFFF(GeneralRecommender):
 
         loss_E = self.loss(score_E, score_E_neg)
         loss_I = self.loss(score_I, score_I_neg)
+        # return loss_I
         return loss_E + loss_I
 
     def predict(self, interaction):
@@ -129,5 +130,6 @@ class PJFFF(GeneralRecommender):
         his_users = interaction[self.HIS_USERS]
 
         score_E = self._forward_E(user_id, item_id)
+        # return score_E
         score_I = self._forward_I(user_id, item_id, his_items, his_users)
         return self.sigmoid(score_E + score_I)
