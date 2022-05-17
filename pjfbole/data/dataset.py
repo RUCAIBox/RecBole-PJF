@@ -367,9 +367,18 @@ class PJFFFDataset(PJFDataset):
         datasets[0]._collect_inter_his()
         datasets[0]._his_fillna()
         datasets[0]._change_his_format()
-        for d in datasets[1:]:
-            d.his_item = datasets[0].his_item
-            d.his_user = datasets[0].his_user
+
+        datasets[1].his_item = datasets[0].his_item
+        datasets[1].his_user = datasets[0].his_user
+
+        datasets[3].his_item = datasets[0].his_item
+        datasets[3].his_user = datasets[0].his_user
+
+        datasets[2].his_item = datasets[0].his_user
+        datasets[2].his_user = datasets[0].his_item
+
+        datasets[4].his_item = datasets[0].his_user
+        datasets[4].his_user = datasets[0].his_item
         return datasets
 
     def _his_fillna(self):
