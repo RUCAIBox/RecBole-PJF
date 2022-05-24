@@ -1,8 +1,6 @@
 # Model
 embedding_size: 128
 hidden_size: 32
-dropout: 0.2
-num_layers: 1
 history_item_len: 100
 
 # if add bert

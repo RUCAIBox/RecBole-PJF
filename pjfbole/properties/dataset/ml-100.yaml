@@ -10,9 +10,9 @@ TIME_FIELD: timestamp
 DIRECT_FIELD: direct
 seq_len: ~
 # Label for Point-wise DataLoader
-LABEL_FIELD: rating
-threshold:
-    rating: 3
+#LABEL_FIELD: rating
+#threshold:
+#    rating: 3
 # NegSample Prefix for Pair-wise DataLoader
 NEG_PREFIX: neg_
 # Text Model Needed
@@ -43,4 +43,4 @@ alias_of_relation_id: ~
 preload_weight: ~
 normalize_field: ~
 
-multi_direction: True
+multi_direction: False
