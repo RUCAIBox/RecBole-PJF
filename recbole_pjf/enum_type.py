@@ -3,7 +3,7 @@
 # @Email  : flust@ruc.edu.cn
 
 """
-pjfbole
+recbole_pjf
 """
 
 from enum import Enum

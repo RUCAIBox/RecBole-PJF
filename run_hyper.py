@@ -3,12 +3,12 @@
 # @Email  : flust@ruc.edu.cn
 
 """
-pjfbole
+recbole_pjf
 """
 import argparse
 
 from recbole.trainer import HyperTuning
-from pjfbole.quick_start import objective_function
+from recbole_pjf.quick_start import objective_function
 
 
 def main():

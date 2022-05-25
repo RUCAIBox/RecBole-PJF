@@ -3,7 +3,7 @@
 # @Email  : flust@ruc.edu.cn
 
 """
-pjfbole.trainer
+recbole_pjf.trainer
 ########################
 """
 

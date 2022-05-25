@@ -3,7 +3,7 @@
 # @Email  : flust@ruc.edu.cn
 
 """
-pjfbole.data.pjf_dataset
+recbole_pjf.data.pjf_dataset
 ##########################
 """
 from typing import Any
@@ -53,20 +53,25 @@ class PJFDataset(Dataset):
 
         if self.config['multi_direction']:
             self.direct_field = self.config['DIRECT_FIELD']
-            self.geek_direct = self.field2token_id[self.direct_field]['0']
-            self.user_single_inter = self.inter_feat[self.inter_feat[self.direct_field] == self.geek_direct]
-            self.item_single_inter = self.inter_feat[self.inter_feat[self.direct_field] != self.geek_direct]
+            if self.direct_field:
+                self.geek_direct = self.field2token_id[self.direct_field]['0']
+                self.user_single_inter = self.inter_feat[self.inter_feat[self.direct_field] == self.geek_direct]
+                self.item_single_inter = self.inter_feat[self.inter_feat[self.direct_field] != self.geek_direct]
 
-        self.inter_feat = self.inter_feat[self.inter_feat[self.label_field] == 1]
+        self.inter_feat_all = self.inter_feat
+        if self.label_field:
+            self.inter_feat = self.inter_feat[self.inter_feat[self.label_field] == 1]
         # is load pre-trained text vec
         if self.config['ADD_BERT'] and self.user_doc is not None:
             self._collect_text_vec()
 
     def _collect_text_vec(self):
+        # 重新整理 vec 的格式
         self.bert_user = torch.stack(self.user_doc[self.udoc_field + '_vec'].values.tolist(), dim=1).transpose(0, 1)
         self.bert_item = torch.stack(self.item_doc[self.idoc_field + '_vec'].values.tolist(), dim=1).transpose(0, 1)
 
     def _doc_fillna(self):
+        # 文本信息填补空值
         def fill_nan(value, fill_size):
             if isinstance(value, (list, np.ndarray, torch.Tensor)):
                 return value
@@ -98,6 +103,7 @@ class PJFDataset(Dataset):
                     self.item_doc[field] = self.item_doc[field].apply(fill_nan, fill_size=nan_size)
 
     def _change_doc_format(self):
+        # 改变文本信息形式
         self.user_doc = self._doc_dataframe_to_interaction(self.user_doc)
         self.item_doc = self._doc_dataframe_to_interaction(self.item_doc)
 
@@ -296,6 +302,9 @@ class PJFDataset(Dataset):
         return df
 
     def field2feats(self, field):
+        """Overload code from :class:`recbole.data.dataset`
+            根据RecBole框架中的dataset代码，建立 self.user_doc / self.item_doc 与 user_id / item_id 的映射关系
+        """
         feats = super(PJFDataset, self).field2feats(field)
         if field == self.uid_field:
             if self.user_doc is not None:
@@ -306,6 +315,8 @@ class PJFDataset(Dataset):
         return feats
 
     def _doc_dataframe_to_interaction(self, data):
+        """文本 dataframe 转为 interaction
+        """
         new_data = {}
         for k in data:
             value = data[k].values
@@ -354,6 +365,8 @@ class PJFFFDataset(PJFDataset):
         self.his_user = None
         self.his_items_field = 'his_items'
         self.his_users_field = 'his_users'
+        self.his_items_label_field = 'his_items_label'
+        self.his_users_label_field = 'his_users_label'
         super().__init__(config)
 
     def build(self):
@@ -368,20 +381,27 @@ class PJFFFDataset(PJFDataset):
         datasets[0]._his_fillna()
         datasets[0]._change_his_format()
 
-        datasets[1].his_item = datasets[0].his_item
-        datasets[1].his_user = datasets[0].his_user
+        for d in datasets:
+            d.his_item = datasets[0].his_item
+            d.his_user = datasets[0].his_user
 
-        datasets[3].his_item = datasets[0].his_item
-        datasets[3].his_user = datasets[0].his_user
+        if self.config['multi_direction']:
+            datasets[2].his_item = datasets[0].his_user
+            datasets[2].his_user = datasets[0].his_item
 
-        datasets[2].his_item = datasets[0].his_user
-        datasets[2].his_user = datasets[0].his_item
+            datasets[4].his_item = datasets[0].his_user
+            datasets[4].his_user = datasets[0].his_item
 
-        datasets[4].his_item = datasets[0].his_user
-        datasets[4].his_user = datasets[0].his_item
         return datasets
 
     def _his_fillna(self):
+        """Processing dataset according to evaluation setting, including Group, Order and Split.
+        See :class:`~recbole.config.eval_setting.EvalSetting` for details.
+
+        Returns:
+            list: List of built :class:`Dataset`.
+        对无历史交互序列的项目进行填充
+        """
         def fill_nan(value, fill_size):
             if isinstance(value, (list, np.ndarray, torch.Tensor)):
                 return value
@@ -393,16 +413,25 @@ class PJFFFDataset(PJFDataset):
         self.his_item[self.his_items_field].fillna(value=0, inplace=True)
         self.his_item[self.his_items_field] = self.his_item[self.his_items_field].apply(
             fill_nan, fill_size=[self.his_len])
+        self.his_item[self.his_items_label_field].fillna(value=0, inplace=True)
+        self.his_item[self.his_items_label_field] = self.his_item[self.his_items_label_field].apply(
+            fill_nan, fill_size=[2 * self.his_len])
 
         new_his_user_df = pd.DataFrame({self.iid_field: np.arange(self.item_num)})
         self.his_user = pd.merge(new_his_user_df, self.his_user, on=self.iid_field, how='left')
         self.his_user[self.his_users_field].fillna(value=0, inplace=True)
         self.his_user[self.his_users_field] = self.his_user[self.his_users_field].apply(
             fill_nan, fill_size=[self.his_len])
+        self.his_user[self.his_users_label_field].fillna(value=0, inplace=True)
+        self.his_user[self.his_users_label_field] = self.his_user[self.his_users_label_field].apply(
+            fill_nan, fill_size=[2 * self.his_len])
 
     def _collect_inter_his(self):
+        """
+            收集历史交互序列
+        """
         if self.time_field:
-            self.inter_feat.sort(by=self.time_field, ascending=True)
+            self.inter_feat_all.sort_values(by=self.time_field, ascending=True)
 
         def get_his_ids(id_list: list):
             his_ids = np.array([]).astype(int)
@@ -412,15 +441,32 @@ class PJFFFDataset(PJFDataset):
                 return his_ids[len(his_ids) - self.his_len:]
             return np.concatenate((his_ids, np.zeros(self.his_len - len(his_ids))), axis=0)
 
-        self.his_user = pd.DataFrame(self.inter_feat.interaction).groupby(self.iid_field).apply(
+        self.his_user = pd.DataFrame(self.inter_feat_all).groupby(self.iid_field).apply(
             lambda x: get_his_ids([i for i in x[self.uid_field]])).to_frame()
         self.his_user.reset_index(inplace=True)
         self.his_user.columns = [self.iid_field, self.his_users_field]
 
-        self.his_item = pd.DataFrame(self.inter_feat.interaction).groupby(self.uid_field).apply(
+        self.his_item = pd.DataFrame(self.inter_feat_all).groupby(self.uid_field).apply(
             lambda x: get_his_ids([i for i in x[self.iid_field]])).to_frame()
         self.his_item.reset_index(inplace=True)
         self.his_item.columns = [self.uid_field, self.his_items_field]
+
+        def get_his_label(id_list: list):
+            his_label = np.array([]).astype(int)
+            for id in id_list:
+                if id == 1:
+                    his_label = np.append(his_label, [0, 1])
+                else:
+                    his_label = np.append(his_label, [1, 0])
+            if len(his_label) > 2 * self.his_len:
+                return his_label[len(his_label) - 2 * self.his_len:]
+            return np.concatenate((his_label, np.zeros(2 * self.his_len - len(his_label))), axis=0).astype(int)
+
+        self.his_item[self.his_items_label_field] = pd.DataFrame(self.inter_feat_all).groupby(self.uid_field).apply(
+            lambda x: get_his_label([i for i in x[self.label_field]]))
+
+        self.his_user[self.his_users_label_field] = pd.DataFrame(self.inter_feat_all).groupby(self.iid_field).apply(
+            lambda x: get_his_label([i for i in x[self.label_field]]))
 
     def _change_his_format(self):
         self.his_item = self._doc_dataframe_to_interaction(self.his_item)
