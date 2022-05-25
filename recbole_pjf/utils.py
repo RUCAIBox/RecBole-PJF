@@ -3,7 +3,7 @@
 # @Email  : flust@ruc.edu.cn
 
 """
-pjfbole.utils
+recbole_pjf.utils
 ########################
 """
 
@@ -23,7 +23,7 @@ def get_model(model_name):
     """
     model_file_name = model_name.lower()
     model_module = None
-    module_path = '.'.join(['pjfbole.model', model_file_name])
+    module_path = '.'.join(['recbole_pjf.model', model_file_name])
     if importlib.util.find_spec(module_path, __name__):
         model_module = importlib.import_module(module_path, __name__)
 
@@ -45,9 +45,9 @@ def get_trainer(model_type, model_name, multi_direction=False):
         Trainer: trainer class
     """
     try:
-        return getattr(importlib.import_module('pjfbole.trainer'), model_name + 'Trainer')
+        return getattr(importlib.import_module('recbole_pjf.trainer'), model_name + 'Trainer')
     except AttributeError:
         if multi_direction:
-            return getattr(importlib.import_module('pjfbole.trainer'), 'MultiDirectTrainer')
+            return getattr(importlib.import_module('recbole_pjf.trainer'), 'MultiDirectTrainer')
         else:
             return get_recbole_trainer(model_type, model_name)

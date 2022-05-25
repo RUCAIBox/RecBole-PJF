@@ -3,7 +3,7 @@
 # @Email  : flust@ruc.edu.cn
 
 """
-pjfbole.data.pjf_dataset
+recbole_pjf.data.pjf_dataset
 ##########################
 """
 from typing import Any

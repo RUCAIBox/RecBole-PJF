@@ -3,7 +3,7 @@
 # @Email  : flust@ruc.edu.cn
 
 """
-pjfbole.data.utils
+recbole_pjf.data.utils
 ########################
 """
 
@@ -18,7 +18,7 @@ from recbole.utils import set_color
 from recbole.data.utils import data_preparation as recbole_data_preparation
 from recbole.data.dataloader import *
 
-from pjfbole.data.dataloader import DPGNNTrainDataloader
+from recbole_pjf.data.dataloader import DPGNNTrainDataloader
 
 
 def create_dataset(config):
@@ -33,7 +33,7 @@ def create_dataset(config):
     Returns:
         Dataset: Constructed dataset.
     """
-    dataset_module = importlib.import_module('pjfbole.data.dataset')
+    dataset_module = importlib.import_module('recbole_pjf.data.dataset')
     recbole_dataset_module = importlib.import_module('recbole.data.dataset')
     if hasattr(dataset_module, config['model'] + 'Dataset'):
         dataset_class = getattr(dataset_module, config['model'] + 'Dataset')
@@ -175,7 +175,7 @@ def get_dataloader(config, phase):
     model_name = config['model']
     if phase == 'train':
         try:
-            return getattr(importlib.import_module('pjfbole.data.dataloader'), model_name + 'TrainDataloader')
+            return getattr(importlib.import_module('recbole_pjf.data.dataloader'), model_name + 'TrainDataloader')
         except AttributeError:
             if model_type != ModelType.KNOWLEDGE:
                 return TrainDataLoader

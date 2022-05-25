@@ -3,14 +3,14 @@
 # @Email  : flust@ruc.edu.cn
 
 """
-pjfbole.config
+recbole_pjf.config
 ##########################
 """
 
 import os
 from recbole.config import Config
 
-from pjfbole.utils import get_model
+from recbole_pjf.utils import get_model
 
 
 class PJFConfig(Config):

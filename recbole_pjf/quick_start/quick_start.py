@@ -3,7 +3,7 @@
 # @Email  : flust@ruc.edu.cn
 
 """
-pjfbole.quick_start
+recbole_pjf.quick_start
 ########################
 """
 import logging
@@ -11,12 +11,12 @@ from logging import getLogger
 
 from recbole.utils import init_logger, init_seed, set_color
 
-from pjfbole.config import PJFConfig
-from pjfbole.data import create_dataset, data_preparation
-from pjfbole.utils import get_model, get_trainer
+from recbole_pjf.config import PJFConfig
+from recbole_pjf.data import create_dataset, data_preparation
+from recbole_pjf.utils import get_model, get_trainer
 
 
-def run_pjfbole(model=None, dataset=None, config_file_list=None, config_dict=None, saved=True):
+def run_recbole_pjf(model=None, dataset=None, config_file_list=None, config_dict=None, saved=True):
     # configurations initialization
     config = PJFConfig(model=model, dataset=dataset, config_file_list=config_file_list, config_dict=config_dict)
     init_seed(config['seed'], config['reproducibility'])
