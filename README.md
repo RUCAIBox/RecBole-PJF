@@ -37,7 +37,7 @@ python run_recbole_pjf.py
 If you want to change the models or datasets, just run the script by setting additional command parameters:
 
 ```bash
-python run_pjfbole.py -m [model] -d [dataset]
+python run_recbole_pjf.py -m [model] -d [dataset]
 ```
 
 ## Implemented Models
