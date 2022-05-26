@@ -154,14 +154,14 @@ class IPJF(GeneralRecommender):
         return loss_e_i, loss_e_m
 
     def calculate_loss(self, interaction):
-        pos_geek = interaction[self.USER].long()
-        pos_job = interaction[self.ITEM].long()
+        pos_geek = interaction[self.USER]
+        pos_job = interaction[self.ITEM]
 
-        neu_job = interaction[self.NEU_ITEM].long()  # 中性岗位
-        neg_job = interaction[self.NEG_ITEM].long()  # 负岗位
+        neu_job = interaction[self.NEU_ITEM]
+        neg_job = interaction[self.NEG_ITEM]
 
-        neu_geek = interaction[self.NEU_USER].long()  # 中性用户
-        neg_geek = interaction[self.NEG_USER].long()  # 负用户
+        neu_geek = interaction[self.NEU_USER]
+        neg_geek = interaction[self.NEG_USER]
 
         loss_s_i, loss_s_m = self.calculate_geek_loss(pos_geek, pos_job, neu_job, neg_job)
         loss_e_i, loss_e_m = self.calculate_job_loss(pos_geek, pos_job, neu_geek, neg_geek)
@@ -170,8 +170,8 @@ class IPJF(GeneralRecommender):
         return loss
 
     def predict(self, interaction):
-        geek_id = interaction[self.USER].long()
-        job_id = interaction[self.ITEM].long()
+        geek_id = interaction[self.USER]
+        job_id = interaction[self.ITEM]
         _, _, match_score = self.forward(geek_id, job_id)
         return torch.sigmoid(match_score).squeeze()
 

@@ -59,7 +59,7 @@ class PJFDataset(Dataset):
                 self.item_single_inter = self.inter_feat[self.inter_feat[self.direct_field] != self.geek_direct]
 
         self.inter_feat_all = self.inter_feat
-        if self.label_field:
+        if self.label_field in self.inter_feat.columns:
             self.inter_feat = self.inter_feat[self.inter_feat[self.label_field] == 1]
         # is load pre-trained text vec
         if self.config['ADD_BERT'] and self.user_doc is not None:

@@ -95,9 +95,9 @@ class PJFNN(GeneralRecommender):
         return x
 
     def calculate_loss(self, interaction):
-        geek_sents = interaction[self.USER_SENTS].long()
-        job_sents = interaction[self.ITEM_SENTS].long()
-        neg_job_sents = interaction[self.neg_prefix + self.ITEM_SENTS].long()
+        geek_sents = interaction[self.USER_SENTS]
+        job_sents = interaction[self.ITEM_SENTS]
+        neg_job_sents = interaction[self.neg_prefix + self.ITEM_SENTS]
 
         output_pos = self.forward(geek_sents, job_sents)
         output_neg = self.forward(geek_sents, neg_job_sents)

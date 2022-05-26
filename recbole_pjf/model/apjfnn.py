@@ -148,8 +148,8 @@ class APJFNN(GeneralRecommender):
         self.loss = BPRLoss()
 
     def forward(self, interaction, geek_field, job_field):
-        geek_sents = interaction[geek_field].long()
-        job_sents = interaction[job_field].long()
+        geek_sents = interaction[geek_field]
+        job_sents = interaction[job_field]
         geek_vecs, job_vecs = self.emb(geek_sents), self.emb(job_sents)
         geek_vecs = torch.cat([self.geek_biLSTM(_)[0].unsqueeze(0) for _ in geek_vecs])
         job_vecs = torch.cat([self.job_biLSTM(_)[0].unsqueeze(0) for _ in job_vecs])
