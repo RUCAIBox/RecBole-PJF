@@ -3,7 +3,7 @@ max_sent_num: 20
 max_sent_len: 30
 
 # Model
-embedding_size: 64
+embedding_size: 128
 hidden_size: 64
 dropout: 0.2
 num_layers: 1
