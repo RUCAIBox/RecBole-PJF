@@ -2,6 +2,7 @@
 log_tensorboard/
 saved/
 dataset/
+hyper_param/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
