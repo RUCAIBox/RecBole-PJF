@@ -18,6 +18,13 @@ class PJFConfig(Config):
     def __init__(self, model=None, dataset=None, config_file_list=None, config_dict=None):
         super(PJFConfig, self).__init__(model, dataset, config_file_list, config_dict)
 
+    def _init_device(self):
+        use_gpu = self.final_config_dict['use_gpu']
+        if use_gpu:
+            os.environ["CUDA_VISIBLE_DEVICES"] = str(self.final_config_dict['gpu_id'])
+        self.final_config_dict['device'] = torch.device("cuda:" + str(self.final_config_dict['gpu_id'])
+                                                        if torch.cuda.is_available() and use_gpu else "cpu")
+
     def _load_internal_config_dict(self, model, model_class, dataset):
         current_path = os.path.dirname(os.path.realpath(__file__))
         overall_init_file = os.path.join(current_path, './properties/overall.yaml')

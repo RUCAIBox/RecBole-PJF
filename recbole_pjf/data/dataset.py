@@ -16,7 +16,7 @@ import torch
 from tqdm import tqdm
 
 from recbole.data.dataset import Dataset
-from recbole.utils import  FeatureType, set_color
+from recbole.utils import FeatureType, set_color
 from recbole.data.interaction import Interaction
 
 
