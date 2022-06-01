@@ -8,6 +8,7 @@ recbole_pjf.config
 """
 
 import os
+import torch
 from recbole.config import Config
 
 from recbole_pjf.utils import get_model
