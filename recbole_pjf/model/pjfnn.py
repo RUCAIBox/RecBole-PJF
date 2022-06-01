@@ -102,15 +102,10 @@ class PJFNN(GeneralRecommender):
         output_pos = self.forward(geek_sents, job_sents)
         output_neg = self.forward(geek_sents, neg_job_sents)
 
-        # label_pos = interaction['label_pos'].to(self.config['device']).squeeze()
-        # label_neg = interaction['label_neg'].to(self.config['device']).squeeze()
-        #
-        # loss = self.loss(output_pos, torch.ones_like(output_pos))
-        # loss += self.loss(output_neg, torch.zeros_like(output_neg))
         return self.loss(output_pos, output_neg)
 
     def predict(self, interaction):
-        geek_sents = interaction[self.USER_SENTS].long()
-        job_sents = interaction[self.ITEM_SENTS].long()
+        geek_sents = interaction[self.USER_SENTS]
+        job_sents = interaction[self.ITEM_SENTS]
         return torch.sigmoid(self.forward(geek_sents, job_sents))
 

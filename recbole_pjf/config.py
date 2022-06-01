@@ -68,7 +68,7 @@ class PJFConfig(Config):
         super(PJFConfig, self)._set_default_parameters()
         default_max_sent_num = 10
         default_max_sent_len = 10
-        default_max_longsent_len = 256
+        default_max_longsent_len = 64
         if 'max_sent_num' not in self.final_config_dict:
             self.final_config_dict['max_sent_num'] = default_max_sent_num
         if 'max_sent_len' not in self.final_config_dict:

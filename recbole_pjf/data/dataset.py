@@ -57,6 +57,9 @@ class PJFDataset(Dataset):
                 self.geek_direct = self.field2token_id[self.direct_field]['0']
                 self.user_single_inter = self.inter_feat[self.inter_feat[self.direct_field] == self.geek_direct]
                 self.item_single_inter = self.inter_feat[self.inter_feat[self.direct_field] != self.geek_direct]
+            else:
+                self.user_single_inter = self.inter_feat
+                self.item_single_inter = self.inter_feat
 
         self.inter_feat_all = self.inter_feat
         if self.label_field in self.inter_feat.columns:
@@ -461,6 +464,9 @@ class PJFFFDataset(PJFDataset):
             if len(his_label) > 2 * self.his_len:
                 return his_label[len(his_label) - 2 * self.his_len:]
             return np.concatenate((his_label, np.zeros(2 * self.his_len - len(his_label))), axis=0).astype(int)
+
+        if self.label_field not in self.inter_feat_all.columns:
+            self.inter_feat_all[self.label_field] = 1
 
         self.his_item[self.his_items_label_field] = pd.DataFrame(self.inter_feat_all).groupby(self.uid_field).apply(
             lambda x: get_his_label([i for i in x[self.label_field]]))
