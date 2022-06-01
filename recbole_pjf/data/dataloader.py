@@ -39,8 +39,12 @@ class DPGNNTrainDataloader(TrainDataLoader):
 class IPJFTrainDataloader(TrainDataLoader):
     def __init__(self, config, dataset, sampler, shuffle=False):
         super().__init__(config, dataset, sampler, shuffle=shuffle)
-        self.user_inter = dataset.user_single_inter[dataset.user_single_inter[dataset.label_field] == 0]
-        self.item_inter = dataset.item_single_inter[dataset.item_single_inter[dataset.label_field] == 0]
+        if dataset.label_field in dataset.user_single_inter.columns:
+            self.user_inter = dataset.user_single_inter[dataset.user_single_inter[dataset.label_field] == 0]
+            self.item_inter = dataset.item_single_inter[dataset.item_single_inter[dataset.label_field] == 0]
+        else:
+            self.user_inter = dataset.user_single_inter
+            self.item_inter = dataset.item_single_inter
         self.neu_prefix = 'neu_'
 
     def change_direction(self):
