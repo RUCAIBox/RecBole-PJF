@@ -6,7 +6,6 @@
 recbole_pjf.data.pjf_dataset
 ##########################
 """
-from typing import Any
 
 import copy
 import os
@@ -69,12 +68,10 @@ class PJFDataset(Dataset):
             self._collect_text_vec()
 
     def _collect_text_vec(self):
-        # 重新整理 vec 的格式
         self.bert_user = torch.stack(self.user_doc[self.udoc_field + '_vec'].values.tolist(), dim=1).transpose(0, 1)
         self.bert_item = torch.stack(self.item_doc[self.idoc_field + '_vec'].values.tolist(), dim=1).transpose(0, 1)
 
     def _doc_fillna(self):
-        # 文本信息填补空值
         def fill_nan(value, fill_size):
             if isinstance(value, (list, np.ndarray, torch.Tensor)):
                 return value
@@ -243,10 +240,8 @@ class PJFDataset(Dataset):
                     lambda x: bert_encoding([i for i in x[doc_field]])).to_frame()
                 vec.reset_index(inplace=True)
                 # vec.columns = [field, doc_field + '_vec']
-                # 增加一列 str
                 vec[doc_field + '_vec_str'] = vec[0].astype(str).apply(
                     lambda x: x[10:-3].replace(' ', '').replace('\n', ''))
-                # 设置字符串保存格式，[field, doc_field + '_vec', doc_field + '_vec_str')
                 # save bert vector
                 if True or self.config['save_bert_vec']:
                     # vec.to_csv(bert_vec_save_path, index=False)
@@ -306,7 +301,6 @@ class PJFDataset(Dataset):
 
     def field2feats(self, field):
         """Overload code from :class:`recbole.data.dataset`
-            根据RecBole框架中的dataset代码，建立 self.user_doc / self.item_doc 与 user_id / item_id 的映射关系
         """
         feats = super(PJFDataset, self).field2feats(field)
         if field == self.uid_field:
@@ -318,8 +312,6 @@ class PJFDataset(Dataset):
         return feats
 
     def _doc_dataframe_to_interaction(self, data):
-        """文本 dataframe 转为 interaction
-        """
         new_data = {}
         for k in data:
             value = data[k].values
@@ -403,7 +395,6 @@ class PJFFFDataset(PJFDataset):
 
         Returns:
             list: List of built :class:`Dataset`.
-        对无历史交互序列的项目进行填充
         """
         def fill_nan(value, fill_size):
             if isinstance(value, (list, np.ndarray, torch.Tensor)):
@@ -430,9 +421,6 @@ class PJFFFDataset(PJFDataset):
             fill_nan, fill_size=[2 * self.his_len])
 
     def _collect_inter_his(self):
-        """
-            收集历史交互序列
-        """
         if self.time_field:
             self.inter_feat_all.sort_values(by=self.time_field, ascending=True)
 
