@@ -15,8 +15,8 @@ class FeatureSource(Enum):
     - ``INTERACTION``: Features from ``.inter`` (other than ``user_id`` and ``item_id``).
     - ``USER``: Features from ``.user`` (other than ``user_id``).
     - ``ITEM``: Features from ``.item`` (other than ``item_id``).
-    - ``USER_SENTS``: Features from ``.usents`` (other than ``user_id``).
-    - ``ITEM_SENTS``: Features from ``.isents`` (other than ``item_id``).
+    - ``USER_SENTS``: Features from ``.udoc`` (other than ``user_id``).
+    - ``ITEM_SENTS``: Features from ``.idoc`` (other than ``item_id``).
     - ``USER_ID``: ``user_id`` feature in ``inter_feat`` and ``user_feat``.
     - ``ITEM_ID``: ``item_id`` feature in ``inter_feat`` and ``item_feat``.
     - ``KG``: Features from ``.kg``.
@@ -26,8 +26,8 @@ class FeatureSource(Enum):
     INTERACTION = 'inter'
     USER = 'user'
     ITEM = 'item'
-    USER_SENTS = 'usents'
-    ITEM_SENTS = 'isents'
+    USER_SENTS = 'udoc'
+    ITEM_SENTS = 'idoc'
     USER_ID = 'user_id'
     ITEM_ID = 'item_id'
     KG = 'kg'
