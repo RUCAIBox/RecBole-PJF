@@ -7,7 +7,6 @@
 * **Content-based Model** make recommendations mainly based on text matching;
 * **Hybrid Model** make recommendations based on both interaction and content.
 
-
 ## Highlights
 
 * **Unified framework** for different methods, including collaborative methods,  content-based methods and hybrid methods;

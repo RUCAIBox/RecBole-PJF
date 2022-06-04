@@ -1,7 +1,10 @@
 .idea/
 log_tensorboard/
 saved/
-dataset/
+dataset/zhilian/
+dataset/zhilian2/
+dataset/jobrec/
+#dataset
 hyper_param/
 # Byte-compiled / optimized / DLL files
 __pycache__/
