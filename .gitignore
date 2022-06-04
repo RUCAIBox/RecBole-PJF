@@ -4,6 +4,7 @@ saved/
 dataset/zhilian/
 dataset/zhilian2/
 dataset/jobrec/
+recbole_pjf/properties/dataset/
 #dataset
 hyper_param/
 # Byte-compiled / optimized / DLL files
