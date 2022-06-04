@@ -86,7 +86,7 @@ We carefully tune the hyper-parameters of the implemented models of each categor
 
 ## The Team
 
-RecBole-PJF is developed and maintained by members from [RUCAIBox](http://aibox.ruc.edu.cn/), the main developers are Chen Yang ([@flust](https://github.com/flust), Yupeng Hou ([@hyp1231](https://github.com/hyp1231)), Shuqing Bian ([@fancybian](https://github.com/fancybian)).
+RecBole-PJF is developed and maintained by members from [RUCAIBox](http://aibox.ruc.edu.cn/), the main developers are Chen Yang ([@flust](https://github.com/flust)), Yupeng Hou ([@hyp1231](https://github.com/hyp1231)), Shuqing Bian ([@fancybian](https://github.com/fancybian)).
 
 ## Acknowledgement
 
