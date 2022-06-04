@@ -61,8 +61,8 @@ We list currently supported models according to category:
 
 ## Dataset
 
-* **[zhilian]()** from [TIANCHI](https://tianchi.aliyun.com/dataset/dataDetail?dataId=31623) data contest.
-* **[kaggle]()** from [kaggle](https://www.kaggle.com/datasets/jsrshivam/job-recommendation-case-study) Job Recommendation Case Study.
+* **zhilian** from [TIANCHI](https://tianchi.aliyun.com/dataset/dataDetail?dataId=31623) data contest.
+* **kaggle** from [kaggle](https://www.kaggle.com/datasets/jsrshivam/job-recommendation-case-study) Job Recommendation Case Study.
 
 ## Result
 
