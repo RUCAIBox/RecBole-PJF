@@ -1,8 +1,5 @@
 # RecBole-PJF
 
-![]()
-
------
 
 **RecBole-PJF** is a library built upon [PyTorch](https://pytorch.org) and [RecBole](https://github.com/RUCAIBox/RecBole) for reproducing and developing person-job fit algorithms. Our library includes algorithms covering three major categories:
 
@@ -10,7 +7,6 @@
 * **Content-based Model** make recommendations mainly based on text matching;
 * **Hybrid Model** make recommendations based on both interaction and content.
 
-![]()
 
 ## Highlights
 
