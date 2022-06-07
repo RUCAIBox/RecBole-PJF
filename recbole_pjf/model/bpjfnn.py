@@ -61,7 +61,7 @@ class BPJFNN(GeneralRecommender):
         longsent = interaction[field]
         vec = self.emb(longsent)
         vec, _ = getattr(self, f'{token}_biLSTM')(vec)
-        vec = torch.sum(vec, dim=1) / torch.sum(longsent != 0).unsqueeze(-1)
+        vec = torch.sum(vec, dim=1) / len(vec)
         return vec
 
     def forward(self, interaction, geek_field, job_field):
