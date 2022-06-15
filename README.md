@@ -21,20 +21,6 @@ pytorch>=1.7.0
 python>=3.7.0
 ```
 
-## Quick-Start
-
-With the source code, you can use the provided script for initial usage of our library:
-
-```bash
-python run_recbole_pjf.py
-```
-
-If you want to change the models or datasets, just run the script by setting additional command parameters:
-
-```bash
-python run_recbole_pjf.py -m [model] -d [dataset]
-```
-
 ## Implemented Models
 
 We list currently supported models according to category:
@@ -59,30 +45,50 @@ We list currently supported models according to category:
 * **[PJFFF](recbole_pjf/model/pjfff.py)** from Jiang *et al.*: [Learning Effective Representations for Person-Job Fit by Feature Fusion](https://arxiv.org/pdf/2006.07017) (CIKM 2020).
 * **[SHPJF](recbole_pjf/model/shpjf.py)** from Hou *et al.*: [Leveraging Search History for Improving Person-Job Fit](https://arxiv.org/pdf/2203.14232) (DASFAA 2022).
 
-## Dataset
+## Dataset and Quick-Start
 
 * **zhilian** from [TIANCHI](https://tianchi.aliyun.com/dataset/dataDetail?dataId=31623) data contest.
-* **kaggle** from [kaggle](https://www.kaggle.com/datasets/jsrshivam/job-recommendation-case-study) Job Recommendation Case Study.
+* **kaggle** from [kaggle](https://www.kaggle.com/datasets/jsrshivam/job-recommendation-case-study) Job Recommendation Case Study.-Start
 
-## Result
+We provide processing scripts in the corresponding folder (e.g. /dataset/zhilian/) and if you want to run experiments with these two datasets, the first step is to download the source files and then run the processing script, converting it to atomic files. The script is as following (take zhilian for example):
 
-We carefully tune the hyper-parameters of the implemented models of each category and release the corresponding leaderboards for reference:
+```bash
+cd dataset/zhilian
+python prepare_zhilian.py
+```
+
+With the source code, you can use the provided script for initial usage of our library:
+
+```bash
+python run_recbole_pjf.py
+```
+
+If you want to change the models or datasets, just run the script by setting additional command parameters:
+
+```bash
+python run_recbole_pjf.py -m [model] -d [dataset]
+```
+
+## Hyper-tuning
+
+We tune the hyper-parameters of the implemented models of each category and release the adjustment range for reference:
+
+For fair comparison, we set embedding_size to 128 for all models and tune other parameters.
 
 - **zhilian**
 
-|   model    | For Candidate |             |        |        | For Employer |             |        |        |
-| :--------: | :-----------: | :---------: | :----: | :----: | :----------: | :---------: | :----: | :----: |
-|            |   Recall@5    | Precision@5 | NDCG@5 |  MRR   |   Recall@5   | Precision@5 | NDCG@5 |  MRR   |
-|   BPRMF    |    0.4148     |   0.0862    | 0.3425 | 0.3236 |    0.3484    |   0.0783    | 0.2493 | 0.2258 |
-|    NCF     |    0.5236     |   0.1082    | 0.4292 | 0.4019 |    0.3266    |   0.0715    | 0.2163 | 0.1880 |
-|  LightGCN  |    0.4845     |   0.1022    | 0.4192 | 0.4047 |    0.4705    |   0.1061    | 0.3651 | 0.3367 |
-|    LFRR    |    0.4148     |   0.0859    | 0.3400 | 0.3202 |    0.3334    |   0.0726    | 0.2092 | 0.1718 |
-|    BERT    |    0.4763     |   0.0980    | 0.3159 | 0.2667 |    0.2292    |   0.0479    | 0.1362 | 0.1088 |
-|   PJFNN    |    0.7285     |   0.1501    | 0.5600 | 0.5093 |    0.4290    |   0.0905    | 0.2763 | 0.2310 |
-|   BPJFNN   |    0.5461     |   0.1123    | 0.3662 | 0.305  |    0.2437    |   0.0518    | 0.1429 | 0.1132 |
-|   APJFNN   |    0.5681     |   0.1173    | 0.4019 | 0.3600 |    0.2390    |   0.0503    | 0.1403 | 0.1109 |
-| PJFFF-BERT |    0.6004     |   0.1237    | 0.4776 | 0.4415 |    0.2992    |   0.0632    | 0.1955 | 0.1651 |
-| IPJF-BERT  |    0.6401     |   0.1324    | 0.4681 | 0.4081 |    0.519     |   0.1104    | 0.3421 | 0.2914 |
+|   model    |                        Best Parameter                        |                       Parameter Range                        |
+| :--------: | :----------------------------------------------------------: | :----------------------------------------------------------: |
+|   BPRMF    |                     learning_rate = 1e-3                     |             learning_rate in [1e-3, 1e-4, 1e-5]              |
+|    NCF     |         learning_rate = 1e-3, map_hidden_size = [64]         | learning_rate in [1e-3, 1e-4, 1e-5], mlp_hidden_size in [[64], [64, 32], [64, 32, 16]] |
+|  LightGCN  |              learning_rate = 1e-4, n_layers = 3              |  learning_rate in [1e-3, 1e-4, 1e-5], n_layers in [2, 3, 4]  |
+|    LFRR    |                     learning_rate = 1e-4                     |             learning_rate in [1e-3, 1e-4, 1e-5]              |
+|    BERT    |                     learning_rate = 1e-3                     |             learning_rate in [1e-3, 1e-4, 1e-5]              |
+|   PJFNN    |  learning_rate = 1e-3, max_sent_num = 20, max_sent_len = 20  | learning_rate in [1e-3, 1e-4, 1e-5], max_sent_num in [10, 20, 30], max_sent_len in [10, 20, 30] |
+|   BPJFNN   | learning_rate = 1e-3, max_sent_num = 20, max_sent_len = 20, hidden_size = 64 | learning_rate in [1e-3, 1e-4, 1e-5], max_sent_num in [10, 20, 30], max_sent_len in [10, 20, 30], hidden_size in [64, 32] |
+|   APJFNN   |    learning_rate = 1e-3, num_layers = 1, hidden_size = 32    | learning_rate in [1e-3, 1e-4, 1e-5], num_layers in [1, 2], hidden_size in [32, 64] |
+| PJFFF-BERT | learning_rate = 1e-4, hidden_size = 32, history_item_len = 20 | learning_rate in [1e-3, 1e-4, 1e-5], hidden_size in [32, 64], history_item_len in [20, 50] |
+| IPJF-BERT  | learning_rate = 1e-3, max_sent_num = 20, max_sent_len = 30,  | learning_rate in [1e-3, 1e-4, 1e-5], max_sent_num in [10, 20, 30], max_sent_len in [10, 20, 30] |
 
 ## The Team
 
