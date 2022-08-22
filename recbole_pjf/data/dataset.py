@@ -50,7 +50,7 @@ class PJFDataset(Dataset):
         if self.user_doc is not None:
             self._doc_fillna()
 
-        if self.config['multi_direction']:
+        if self.config['biliteral']:
             self.direct_field = self.config['DIRECT_FIELD']
             if self.direct_field:
                 self.geek_direct = self.field2token_id[self.direct_field]['0']
@@ -116,7 +116,7 @@ class PJFDataset(Dataset):
         """
         datasets = super(PJFDataset, self).build()
 
-        if self.config['multi_direction']:
+        if self.config['biliteral']:
             # valid_g = self.copy(datasets[1].inter_feat[datasets[1].inter_feat[self.direct_field] == self.geek_direct])
             valid_g = self.copy(datasets[1].inter_feat)
 
@@ -380,7 +380,7 @@ class PJFFFDataset(PJFDataset):
             d.his_item = datasets[0].his_item
             d.his_user = datasets[0].his_user
 
-        if self.config['multi_direction']:
+        if self.config['biliteral']:
             datasets[2].his_item = datasets[0].his_user
             datasets[2].his_user = datasets[0].his_item
 

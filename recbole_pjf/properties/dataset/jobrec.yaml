@@ -16,8 +16,8 @@ LABEL_FIELD: label
 # NegSample Prefix for Pair-wise DataLoader
 NEG_PREFIX: neg_
 # Text Model Needed
-USER_DOC_FIELD: user_doc
-ITEM_DOC_FIELD: item_doc
+# USER_DOC_FIELD: user_doc
+# ITEM_DOC_FIELD: item_doc
 
 # Selectively Loading
 load_col:
@@ -42,4 +42,4 @@ alias_of_relation_id: ~
 preload_weight: ~
 normalize_field: ~
 
-multi_direction: True
+biliteral: True

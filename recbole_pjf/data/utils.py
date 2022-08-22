@@ -65,7 +65,7 @@ def create_dataset(config):
 
 def data_preparation(config, dataset):
     """Split the dataset by :attr:`config['eval_args']` and create training, validation and test dataloader.
-    If the :attr:`config['multi_direction']` is set, the dataset is divided into
+    If the :attr:`config['biliteral']` is set, the dataset is divided into
     train, valid for geek, valid for job, test for geek and test for job.
 
     Args:
@@ -78,7 +78,7 @@ def data_preparation(config, dataset):
             - (valid_g_data, valid_j_data) (tuple of AbstractDataLoader): The dataloader for validation for geek and job.
             - (test_g_data, test_j_data) (tuple of AbstractDataLoader): The dataloader for testing for geek and job.
     """
-    if not config['multi_direction']:
+    if not config['biliteral']:
         return recbole_data_preparation(config, dataset)
 
     built_datasets = dataset.build()

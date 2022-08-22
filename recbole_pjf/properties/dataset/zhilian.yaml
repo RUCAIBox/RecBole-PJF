@@ -16,16 +16,16 @@ threshold:
 # NegSample Prefix for Pair-wise DataLoader
 NEG_PREFIX: neg_
 # Text Model Needed
-USER_DOC_FIELD: user_doc
-ITEM_DOC_FIELD: job_doc
+# USER_DOC_FIELD: user_doc
+# ITEM_DOC_FIELD: job_doc
 
 # Selectively Loading
 load_col:
     inter: [user_id, job_id, direct, label]
 #    user: [user_id, live_city_id]
 #    item: [job_id, city]
-    udoc: [user_id, user_doc]
-    idoc: [job_id, job_doc]
+    # udoc: [user_id, user_doc]
+    # idoc: [job_id, job_doc]
 unload_col: ~
 unused_col: ~
 
@@ -44,4 +44,4 @@ alias_of_relation_id: ~
 preload_weight: ~
 normalize_field: ~
 
-multi_direction: False
+biliteral: False

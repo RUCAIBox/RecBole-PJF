@@ -44,4 +44,4 @@ alias_of_relation_id: ~
 preload_weight: ~
 normalize_field: ~
 
-multi_direction: False
+biliteral: False
