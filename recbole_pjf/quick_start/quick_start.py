@@ -40,7 +40,7 @@ def run_recbole_pjf(model=None, dataset=None, config_file_list=None, config_dict
 
     # trainer loading and initialization
     trainer = get_trainer(config['MODEL_TYPE'], config['model'],
-                          multi_direction=config['multi_direction'])(config, model)
+                          multi_direction=config['biliteral'])(config, model)
 
     # model training
     best_valid_score, best_valid_result = trainer.fit(
