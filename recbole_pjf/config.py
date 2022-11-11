@@ -8,32 +8,23 @@ recbole_pjf.config
 """
 
 import os
-import torch
 from recbole.config import Config
-
 from recbole_pjf.utils import get_model
-
 
 class PJFConfig(Config):
 
     def __init__(self, model=None, dataset=None, config_file_list=None, config_dict=None):
         super(PJFConfig, self).__init__(model, dataset, config_file_list, config_dict)
 
-    def _init_device(self):
-        use_gpu = self.final_config_dict['use_gpu']
-        if use_gpu:
-            os.environ["CUDA_VISIBLE_DEVICES"] = str(self.final_config_dict['gpu_id'])
-        self.final_config_dict['device'] = torch.device("cuda:" + str(self.final_config_dict['gpu_id'])
-                                                        if torch.cuda.is_available() and use_gpu else "cpu")
-
     def _load_internal_config_dict(self, model, model_class, dataset):
         current_path = os.path.dirname(os.path.realpath(__file__))
         overall_init_file = os.path.join(current_path, './properties/overall.yaml')
+        sample_init_file = os.path.join(current_path, "./properties/dataset/sample.yaml")
         model_init_file = os.path.join(current_path, './properties/model/' + model + '.yaml')
         dataset_init_file = os.path.join(current_path, './properties/dataset/' + dataset + '.yaml')
 
         self.internal_config_dict = dict()
-        for file in [overall_init_file, model_init_file, dataset_init_file]:
+        for file in [overall_init_file, sample_init_file, model_init_file, dataset_init_file]:
             if os.path.isfile(file):
                 config_dict = self._update_internal_config_dict(file)
                 if file == dataset_init_file:

@@ -11,9 +11,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.init import xavier_normal_
-from torch_geometric.nn import MessagePassing
-from torch_geometric.utils import degree
-
 from recbole.model.abstract_recommender import GeneralRecommender
 from recbole.model.loss import BPRLoss, EmbLoss
 from recbole.utils import InputType
@@ -24,6 +21,9 @@ class DPGNN(GeneralRecommender):
 
     def __init__(self, config, dataset):
         super(DPGNN, self).__init__(config, dataset)
+
+        from recbole_pjf.model.layer import GCNConv
+
         self.NEG_USER_ID = config['NEG_PREFIX'] + self.USER_ID
         self.NEG_ITEM_ID = config['NEG_PREFIX'] + self.ITEM_ID
         # load parameters info
@@ -84,6 +84,7 @@ class DPGNN(GeneralRecommender):
         #   item p node: [n_users + 1 ~~~ n_users + 1 + n_items] (len: n_users)
         #   user p node: [~] (len: n_users)
         #   item a node: [~] (len: n_items)
+        from torch_geometric.utils import degree
         n_all = self.n_users + self.n_items
 
         # success edge
@@ -275,16 +276,3 @@ class DPGNN(GeneralRecommender):
         return scores
 
 
-class GCNConv(MessagePassing):
-    def __init__(self, dim):
-        super(GCNConv, self).__init__(aggr='add')
-        self.dim = dim
-
-    def forward(self, x, edge_index, edge_weight):
-        return self.propagate(edge_index, x=x, edge_weight=edge_weight)
-
-    def message(self, x_j, edge_weight):
-        return edge_weight.view(-1, 1) * x_j
-
-    def __repr__(self):
-        return '{}({})'.format(self.__class__.__name__, self.dim)
