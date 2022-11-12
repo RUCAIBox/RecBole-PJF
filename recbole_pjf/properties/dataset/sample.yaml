@@ -4,9 +4,9 @@ seq_separator: " "              # (str) Separator inside the sequence features.
 
 # Basic Information
 USER_ID_FIELD: user_id          # (str) Field name of user ID feature.
-ITEM_ID_FIELD: item_id          # (str) Field name of item ID feature.
-DIRECT_FIELD: direct
-RATING_FIELD: rating            # (str) Field name of rating feature.
+ITEM_ID_FIELD: item_id           # (str) Field name of item ID feature.
+DIRECT_FIELD: ~
+RATING_FIELD: ~                 # (str) Field name of rating feature.
 TIME_FIELD: timestamp           # (str) Field name of timestamp feature.
 USER_DOC_FIELD: user_doc
 ITEM_DOC_FIELD: job_doc

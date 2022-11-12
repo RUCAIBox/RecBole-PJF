@@ -130,14 +130,14 @@ def create_samplers_for_multi_direction(config, dataset, built_datasets):
     g_sampler, j_sampler = None, None
     valid_g_sampler, valid_j_sampler, test_g_sampler, test_j_sampler = None, None, None, None
 
-    if train_neg_sample_args['strategy'] != 'none':
+    if train_neg_sample_args['distribution'] != 'none':
         if not config['repeatable']:
             sampler = Sampler(phases, built_datasets, train_neg_sample_args['distribution'])
         else:
             sampler = RepeatableSampler(phases, dataset, train_neg_sample_args['distribution'])
         train_sampler = sampler.set_phase('train')
 
-    if eval_neg_sample_args['strategy'] != 'none':
+    if eval_neg_sample_args['distribution'] != 'none':
         if g_sampler is None or j_sampler is None:
             if not config['repeatable']:
                 g_sampler = Sampler(phases, built_datasets, eval_neg_sample_args['distribution'])
@@ -182,8 +182,9 @@ def get_dataloader(config, phase):
             else:
                 return KnowledgeBasedDataLoader
     else:
-        eval_strategy = config['eval_neg_sample_args']['strategy']
-        if eval_strategy in {'none', 'by'}:
-            return NegSampleEvalDataLoader
-        elif eval_strategy == 'full':
+        eval_strategy = config['eval_args']['mode']
+        if eval_strategy == "full":
             return FullSortEvalDataLoader
+        else:
+            return NegSampleEvalDataLoader
+            
