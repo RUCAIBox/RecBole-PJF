@@ -61,6 +61,7 @@ class PJFDataset(Dataset):
                 self.item_single_inter = self.inter_feat
 
         self.inter_feat_all = self.inter_feat
+        self.inter_feat_fail = self.inter_feat[self.inter_feat[self.label_field] == 0]
         if self.label_field in self.inter_feat.columns:
             self.inter_feat = self.inter_feat[self.inter_feat[self.label_field] == 1]
         # is load pre-trained text vec
@@ -324,13 +325,13 @@ class PJFDataset(Dataset):
     def user_single_inter_matrix(self, form='coo', value_field=None):
         if not self.uid_field or not self.iid_field:
             raise ValueError('dataset does not exist uid/iid, thus can not converted to sparse matrix.')
-        self.user_single_inter = self.inter_feat_all[self.inter_feat_all[self.direct_field] == self.geek_direct]
+        self.user_single_inter = self.inter_feat_fail[self.inter_feat_fail[self.direct_field] == self.geek_direct]
         return self._create_sparse_matrix(self.user_single_inter, self.uid_field, self.iid_field, form, value_field)
 
     def item_single_inter_matrix(self, form='coo', value_field=None):
         if not self.uid_field or not self.iid_field:
             raise ValueError('dataset does not exist uid/iid, thus can not converted to sparse matrix.')
-        self.item_single_inter = self.inter_feat_all[self.inter_feat_all[self.direct_field] != self.geek_direct]
+        self.item_single_inter = self.inter_feat_fail[self.inter_feat_fail[self.direct_field] != self.geek_direct]
         return self._create_sparse_matrix(self.item_single_inter, self.uid_field, self.iid_field, form, value_field)
 
       
