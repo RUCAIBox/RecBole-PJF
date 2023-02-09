@@ -18,7 +18,7 @@ from recbole.utils import set_color
 from recbole.data.utils import data_preparation as recbole_data_preparation
 from recbole.data.dataloader import *
 
-from recbole_pjf.data.dataloader import DPGNNTrainDataloader
+from recbole_pjf.data.dataloader import *
 
 
 def create_dataset(config):
@@ -151,6 +151,7 @@ def create_samplers_for_multi_direction(config, dataset, built_datasets):
             g_sampler.set_distribution(eval_neg_sample_args['distribution'])
             built_datasets[0].change_direction()
             j_sampler.set_distribution(eval_neg_sample_args['distribution'])
+            
         valid_g_sampler = g_sampler.set_phase('valid_g')
         valid_j_sampler = j_sampler.set_phase('valid_j')
         test_g_sampler = g_sampler.set_phase('test_g')
@@ -178,13 +179,13 @@ def get_dataloader(config, phase):
             return getattr(importlib.import_module('recbole_pjf.data.dataloader'), model_name + 'TrainDataloader')
         except AttributeError:
             if model_type != ModelType.KNOWLEDGE:
-                return TrainDataLoader
+                return PJFTrainDataLoader
             else:
                 return KnowledgeBasedDataLoader
     else:
         eval_strategy = config['eval_args']['mode']
         if eval_strategy == "full":
-            return FullSortEvalDataLoader
+            return RFullSortEvalDataLoader
         else:
-            return NegSampleEvalDataLoader
+            return RNegSampleEvalDataLoader
             

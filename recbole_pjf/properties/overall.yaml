@@ -5,7 +5,7 @@ use_gpu: True                   # (bool) Whether or not to use GPU.
 seed: 2020                      # (int) Random seed.
 state: INFO                     # (str) Logging level.
 reproducibility: True           # (bool) Whether or not to make results reproducible.
-data_path: 'dataset/'           # (str) The path of input dataset.
+data_path: '/code/yangchen/0205/RecBole-PJF/dataset/'           # (str) The path of input dataset.
 checkpoint_dir: 'saved'         # (str) The path to save checkpoint file.
 show_progress: True             # (bool) Whether or not to show the progress bar of every epoch.
 save_dataset: False             # (bool) Whether or not to save filtered dataset.
@@ -43,11 +43,11 @@ eval_args:
   split: {'RS':[0.8,0.1,0.1]}
   group_by: user
   order: RO
-  mode: uni20
+  mode: full
 repeatable: False
 metrics: ["Recall","Precision","NDCG","MRR"]
-topk: [5]
-valid_metric: Recall@5
+topk: [10]
+valid_metric: Recall@10
 valid_metric_bigger: True
-eval_batch_size: 1024
+eval_batch_size: 409600
 metric_decimal_place: 4

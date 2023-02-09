@@ -10,6 +10,7 @@ import jieba
 import re
 import datetime
 import tqdm
+import os
 
 class zhilian:
     def __init__(self):
@@ -24,12 +25,27 @@ class zhilian:
         f_target = open('zhilian.inter', 'w')
         f.readline()
         f_target.write('user_id:token\tjob_id:token\tdirect:token\tlabel:float\n')
+        self.uid_set = set()
+        self.jid_set = set()
+        line_count = 0
         for line in f:
             uid, jid, b, d, s = line[:-1].split('\t')
-            label = s
-            direct = '0'
-            new_line = '\t'.join([uid, jid, direct, label]) + '\n'
+            # if b == '0' and d == '0' and s == '0':
+            if s == '0':
+                continue
+            self.uid_set.add(uid)
+            self.jid_set.add(jid)
+            import random
+            if random.random() < 0.5:
+                direct = '0'
+            else:
+                direct = '1'
+            new_line = '\t'.join([uid, jid, direct, s]) + '\n'
             f_target.write(new_line)
+            line_count += 1
+        print("uid count is: ", len(self.uid_set))
+        print("jid count is: ", len(self.jid_set))
+        print("line count is: ", line_count)
 
     def get_user_item(self):
         u_index = [0, 1, 5, 8, 9, 10, 11]
@@ -39,10 +55,15 @@ class zhilian:
         head = [head[i] for i in u_index]
         head = [i + ':token' for i in head]
         f_user.write('\t'.join(head) + '\n')
+        user_line_count = 0
         for line in f:
             lines = line.split('\t')
             lines = [lines[i] for i in u_index]
-            f_user.write('\t'.join(lines) + '\n')
+
+            if lines[0] in self.uid_set:
+                f_user.write('\t'.join(lines) + '\n')
+                user_line_count += 1
+        print("user line count:", user_line_count)
         f.close()
         f_user.close()
 
@@ -54,10 +75,14 @@ class zhilian:
         head[0] = 'job_id'
         head = [i + ':token' for i in head]
         f_item.write('\t'.join(head) + '\n')
+        job_line_count = 0
         for line in f:
             lines = line.split('\t')
             lines = [lines[i] for i in j_index]
-            f_item.write('\t'.join(lines) + '\n')
+            if lines[0] in self.jid_set:
+                f_item.write('\t'.join(lines) + '\n')
+                job_line_count += 1
+        print("job line count:", job_line_count)
         f.close()
         f_item.close()
 
@@ -69,8 +94,14 @@ class zhilian:
         f_udoc = open('zhilian.udoc', 'w')
         head = ['user_id:token', 'user_doc:token_seq']
         f_udoc.write('\t'.join(head) + '\n')
+        user_doc_line_count = 0
         for line in f:
             lines = line[:-1].split('\t')
+            # import pdb
+            # pdb.set_trace()
+            if lines[0] not in self.uid_set:
+                continue
+            user_doc_line_count += 1
             for i in u_doc_index:
                 if lines[i] and lines[i] != '-':
                     sents = lines[i]
@@ -87,11 +118,11 @@ class zhilian:
                     except:
                         print(sents)
                         f_udoc.write(lines[0] + '\t' + sents + '\n')
-
+        print("user_doc_line_count:", user_doc_line_count)
         f.close()
         f_udoc.close()
 
-        print('job begin')
+        # print('job begin')
 
         j_doc_index = [1, 2, 4, -1]
         f = open('table2_jd.txt', 'r')
@@ -99,11 +130,14 @@ class zhilian:
         f_idoc = open('zhilian.idoc', 'w')
         head = ['job_id:token', 'job_doc:token_seq']
         f_idoc.write('\t'.join(head) + '\n')
-        count = 0
-
+        # count = 0
+        job_doc_line_count = 0
         for line in f:
-            count += 1
+            # count += 1
             lines = line[:-1].split('\t')
+            if lines[0] not in self.jid_set:
+                continue
+            job_doc_line_count += 1
             for i in j_doc_index:
                 if lines[i] and lines[i] != '-' and lines[i] != '\\N':
                     sents = lines[i]
@@ -121,9 +155,9 @@ class zhilian:
                         print(sents)
                         f_idoc.write(lines[0] + '\t' + sents + '\n')
 
-            if count % 1000 == 0:
-                print(count)
-
+            # if count % 1000 == 0:
+                # print(count)
+        print("job doc line count:", job_doc_line_count)
         f.close()
         f_idoc.close()
 
