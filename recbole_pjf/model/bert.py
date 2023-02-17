@@ -43,8 +43,8 @@ class BERT(GeneralRecommender):
             xavier_normal_(module.weight.data)
 
     def forward(self, user, item):
-        u = self.bert_user(user)
-        i = self.bert_item(item)
+        u = self.bert_user(user.float())
+        i = self.bert_item(item.float())
         u_i = torch.cat([u, i], dim=1)
         score = self.predict_layer(u_i)
         return score.squeeze()
