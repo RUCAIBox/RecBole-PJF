@@ -125,22 +125,6 @@ class MultiDirectTrainer(Trainer):
                 scores, interaction, positive_u, positive_i
             )
 
-            # get rrecall infor
-            uid_list = torch.LongTensor(batched_data[4])
-            _, topk_idx = torch.topk(scores, self.config['topk'][0], dim=-1)
-            pos_matrix = torch.zeros_like(scores, dtype=torch.int)
-            pos_matrix[positive_u, positive_i] = 1
-            pos_idx = torch.gather(pos_matrix, dim=1, index=topk_idx)
-            real_rec_positive = topk_idx[pos_idx == 1]
-
-            uid = torch.repeat_interleave(uid_list.cpu(), pos_idx.cpu().sum(dim=1), dim=0)
-            if direct == 1:
-                cur = torch.stack((uid, real_rec_positive.cpu()), dim=1)
-            else:
-                cur = torch.stack((real_rec_positive.cpu(), uid), dim=1)
-                
-            # self.all_rec = torch.cat((self.all_rec, cur), dim=0)
-
         self.eval_collector.model_collect(self.model)
         struct = self.eval_collector.get_data_struct()
         return struct
