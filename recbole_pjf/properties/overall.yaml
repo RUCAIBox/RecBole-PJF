@@ -43,11 +43,11 @@ eval_args:
   split: {'RS':[0.8,0.1,0.1]}
   group_by: user
   order: RO
-  mode: full
+  mode: uni20
 repeatable: False
 metrics: ["Recall","Precision","NDCG","MRR"]
-topk: [10]
-valid_metric: Recall@10
+topk: [5]
+valid_metric: Recall@5
 valid_metric_bigger: True
-eval_batch_size: 409600
+eval_batch_size: 4096
 metric_decimal_place: 4
