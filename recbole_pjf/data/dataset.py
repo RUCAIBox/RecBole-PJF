@@ -31,6 +31,7 @@ class PJFDataset(Dataset):
         self.id2wd = ['[WD_PAD]', '[WD_MISS]']
         self.user_doc = None
         self.item_doc = None
+        self.device = config.device
         super().__init__(config)
 
     def change_direction(self):
@@ -215,7 +216,9 @@ class PJFDataset(Dataset):
                     s += wd + ' '
             s = s[:512]
             input = self.tokenizer(s, return_tensors="pt")
-            output = self.model(**input)[0][:, 0].detach()
+            input_ids = input['input_ids'].to(self.device)
+            attention_mask = input['attention_mask'].to(self.device)
+            output = self.model(input_ids, attention_mask=attention_mask)[0][:, 0].cpu().detach()
             return output.squeeze()
 
         def deal_str(vec_string):
@@ -234,7 +237,7 @@ class PJFDataset(Dataset):
                 logging.set_verbosity_warning()
                 MODEL_PATH = self.config['pretrained_bert_model'] or "bert-base-cased"
                 self.tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
-                self.model = AutoModel.from_pretrained(MODEL_PATH)
+                self.model = AutoModel.from_pretrained(MODEL_PATH).to(self.device)
 
                 tqdm.pandas(desc=f"bert encoding for {suf}")
                 vec = feat.groupby(field).progress_apply(
